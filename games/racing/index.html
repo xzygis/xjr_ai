@@ -1,0 +1,1286 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>自由远景赛车</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 16px;
+      color: #e2e8f0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: radial-gradient(circle at 18% 6%, #0ea5e9 0%, transparent 34%), radial-gradient(circle at 92% 12%, #a855f7 0%, transparent 28%), linear-gradient(160deg, #020617, #0f172a);
+    }
+    .panel {
+      width: min(960px, 100%);
+      border-radius: 18px;
+      border: 1px solid #334155;
+      background: #0b1220ed;
+      box-shadow: 0 28px 58px #0206178a;
+      padding: 14px;
+    }
+    .top {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    .title {
+      margin: 0;
+      font-size: clamp(22px, 3.8vw, 34px);
+      font-weight: 900;
+      letter-spacing: .03em;
+      color: #f8fafc;
+    }
+    .desc {
+      margin: 4px 0 0;
+      font-size: 13px;
+      color: #94a3b8;
+      line-height: 1.5;
+    }
+    .stats {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .pill {
+      min-width: 106px;
+      border-radius: 999px;
+      border: 1px solid #334155;
+      background: #0f172a;
+      color: #cbd5e1;
+      font-size: 13px;
+      font-weight: 800;
+      text-align: center;
+      padding: 8px 12px;
+    }
+    .good { color: #22c55e; }
+    .warn { color: #f59e0b; }
+    .bad { color: #ef4444; }
+    .canvas-wrap {
+      border: 1px solid #334155;
+      border-radius: 14px;
+      overflow: hidden;
+      position: relative;
+      background: #020617;
+    }
+    canvas {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      display: block;
+      touch-action: none;
+    }
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 16px;
+      background: linear-gradient(180deg, #020617bf, #020617f5);
+      transition: opacity .25s ease;
+    }
+    .overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    .overlay-card {
+      width: min(760px, 100%);
+      border-radius: 14px;
+      border: 1px solid #334155;
+      background: #0f172aec;
+      box-shadow: 0 12px 24px #02061780;
+      padding: 16px;
+    }
+    .overlay-title {
+      margin: 0;
+      font-size: 30px;
+      font-weight: 900;
+      color: #f8fafc;
+      letter-spacing: .03em;
+      text-align: center;
+    }
+    .overlay-text {
+      margin: 10px auto 14px;
+      color: #94a3b8;
+      font-size: 14px;
+      text-align: center;
+      line-height: 1.6;
+      max-width: 640px;
+    }
+    .cars {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .car-card {
+      border: 1px solid #334155;
+      border-radius: 12px;
+      background: #111827;
+      padding: 10px;
+      display: grid;
+      gap: 6px;
+    }
+    .car-title {
+      font-weight: 900;
+      color: #f8fafc;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: center;
+    }
+    .car-meta {
+      display: flex;
+      justify-content: space-between;
+      color: #cbd5e1;
+      font-size: 12px;
+    }
+    .car-bar {
+      height: 7px;
+      border-radius: 999px;
+      background: #1f2937;
+      overflow: hidden;
+    }
+    .car-bar > span {
+      display: block;
+      height: 100%;
+      background: linear-gradient(90deg, #22c55e, #06b6d4);
+    }
+    .car-btn {
+      border: 1px solid #334155;
+      border-radius: 999px;
+      background: linear-gradient(180deg, #38bdf8, #2563eb);
+      color: #f8fafc;
+      font-size: 13px;
+      font-weight: 800;
+      padding: 8px 12px;
+      cursor: pointer;
+    }
+    .car-btn.buy { background: linear-gradient(180deg, #22c55e, #15803d); }
+    .car-btn.lock { background: linear-gradient(180deg, #475569, #334155); cursor: not-allowed; }
+    .actions {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    button.main-btn {
+      border: 1px solid #334155;
+      border-radius: 999px;
+      background: linear-gradient(180deg, #38bdf8, #2563eb);
+      color: #f8fafc;
+      font-size: 14px;
+      font-weight: 800;
+      padding: 9px 16px;
+      cursor: pointer;
+      transition: transform .12s ease, filter .12s ease;
+    }
+    button.main-btn:hover { transform: translateY(-1px); filter: brightness(1.08); }
+    button.main-btn.ghost { background: linear-gradient(180deg, #334155, #1e293b); }
+    .mobile {
+      margin-top: 12px;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .mobile button {
+      border-radius: 12px;
+      min-height: 44px;
+      border: 1px solid #475569;
+      background: linear-gradient(180deg, #1e293b, #0f172a);
+      color: #e2e8f0;
+      font-size: 14px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .tip {
+      margin: 10px 0 2px;
+      text-align: center;
+      color: #94a3b8;
+      font-size: 12px;
+    }
+    .selected-tag {
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 11px;
+      background: #14532d;
+      color: #86efac;
+    }
+  </style>
+</head>
+<body>
+  <main class="panel">
+    <section class="top">
+      <div>
+        <h1 class="title">自由远景赛车</h1>
+        <p class="desc">开局发放 1000 元，选你喜欢的车。不是平面切道，是真正前方远景的自由驾驶，想往哪开就往哪开。</p>
+      </div>
+      <div class="stats">
+        <div class="pill">资金：<span id="money" class="good">1000</span></div>
+        <div class="pill">速度：<span id="speed" class="warn">0</span> km/h</div>
+        <div class="pill">里程：<span id="distance" class="good">0</span> km</div>
+        <div class="pill">油量：<span id="fuel" class="good">∞</span></div>
+        <div class="pill">坐标：<span id="coord" class="warn">0,0</span></div>
+        <div class="pill">车辆：<span id="carName" class="good">未选择</span></div>
+        <div class="pill">事故：<span id="caseState" class="warn">无</span></div>
+      </div>
+    </section>
+    <section class="canvas-wrap">
+      <canvas id="game" width="960" height="540"></canvas>
+      <div id="overlay" class="overlay">
+        <div class="overlay-card">
+          <h2 id="overlayTitle" class="overlay-title">选车出发</h2>
+          <p id="overlayText" class="overlay-text">你已获得开局资金 1000 元。先买车或选车，然后开始探索开放世界。<br>键盘：W 加速，S 刹车，A/D 转向。手机：左转/加速/刹车/右转。</p>
+          <div id="cars" class="cars"></div>
+          <div class="actions">
+            <button id="startBtn" class="main-btn" type="button">开始驾驶</button>
+            <button id="resetMoneyBtn" class="main-btn ghost" type="button">重置资金与车库</button>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section class="mobile">
+      <button id="leftBtn" type="button">↺ 左转</button>
+      <button id="accBtn" type="button">▲ 加速</button>
+      <button id="brakeBtn" type="button">▼ 刹车</button>
+      <button id="rightBtn" type="button">右转 ↻</button>
+    </section>
+    <p class="tip">可视距离约 900 米，远景地标和地面网格会持续延伸，开到哪里都行。</p>
+  </main>
+  <script>
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+    const overlay = document.getElementById("overlay");
+    const carsEl = document.getElementById("cars");
+    const startBtn = document.getElementById("startBtn");
+    const resetMoneyBtn = document.getElementById("resetMoneyBtn");
+    const overlayTitle = document.getElementById("overlayTitle");
+    const overlayText = document.getElementById("overlayText");
+    const moneyEl = document.getElementById("money");
+    const speedEl = document.getElementById("speed");
+    const distanceEl = document.getElementById("distance");
+    const fuelEl = document.getElementById("fuel");
+    const coordEl = document.getElementById("coord");
+    const carNameEl = document.getElementById("carName");
+    const caseStateEl = document.getElementById("caseState");
+    const leftBtn = document.getElementById("leftBtn");
+    const rightBtn = document.getElementById("rightBtn");
+    const accBtn = document.getElementById("accBtn");
+    const brakeBtn = document.getElementById("brakeBtn");
+
+    const saveKey = "free-racing-wallet-v2";
+    const garageKey = "free-racing-garage-v2";
+    const selectedKey = "free-racing-selected-v2";
+
+    const cars = [
+      { id: "sedan_a", name: "奔驰", price: 500, topSpeed: 260, accel: 28, handling: 2.6, color: "#38bdf8" },
+      { id: "sedan_b", name: "宝马", price: 920, topSpeed: 390, accel: 34, handling: 3.2, color: "#f97316" },
+      { id: "sedan_c", name: "保时捷", price: 1000, topSpeed: 450, accel: 40, handling: 3.5, color: "#a855f7" },
+      { id: "sedan_d", name: "比亚迪", price: 2000, topSpeed: 550, accel: 55, handling: 5.5, color: "#06b6d4" },
+      { id: "sedan_e", name: "本田", price: 3000, topSpeed: 603, accel: 58, handling: 6.03, color: "#22c55e" },
+      { id: "sedan_f", name: "劳斯莱斯", price: 10000, topSpeed: 1050, accel: 78, handling: 10.5, color: "#f59e0b" }
+    ];
+
+    let wallet = Number(localStorage.getItem(saveKey) || 1000);
+    let owned = new Set(JSON.parse(localStorage.getItem(garageKey) || "[\"sedan_a\"]"));
+    let selectedCarId = localStorage.getItem(selectedKey) || "sedan_a";
+    if (!owned.has(selectedCarId)) selectedCarId = "sedan_a";
+
+    const laneCenters = [-54, -18, 18, 54];
+    const laneDividers = [-36, 0, 36];
+    const roadHalfWidth = 88;
+    const traffic = [];
+    let trafficSpawnTimer = 0;
+    let running = false;
+    let lastTs = 0;
+    let distance = 0;
+    let speed = 0;
+    let fuel = Infinity;
+    let incidentState = "none";
+    let incidentTimer = 0;
+    let policeZ = 920;
+    let policeGap = 340;
+    let policeLane = 1;
+    let explosionLane = 1;
+    let explosionZ = 40;
+    let incidentJudgement = "";
+    let playerFault = false;
+    let caseSettled = false;
+    let resumeSpeedAfterCrash = 120;
+    let weatherTimer = 0;
+    let weatherMode = 0;
+    const tornadoX = 18;
+    let rewardedKm = 0;
+    let audioCtx = null;
+    let engineOsc = null;
+    let engineGain = null;
+    let sirenPulseTimer = 0;
+    const player = { x: 0, z: 0 };
+    const keys = { left: false, right: false, acc: false, brake: false };
+
+    function saveGarage() {
+      localStorage.setItem(saveKey, String(Math.floor(wallet)));
+      localStorage.setItem(garageKey, JSON.stringify(Array.from(owned)));
+      localStorage.setItem(selectedKey, selectedCarId);
+    }
+
+    function currentCar() {
+      return cars.find((c) => c.id === selectedCarId) || cars[0];
+    }
+
+    function renderCars() {
+      carsEl.innerHTML = "";
+      for (const car of cars) {
+        const card = document.createElement("div");
+        card.className = "car-card";
+        const isOwned = owned.has(car.id);
+        const isSelected = selectedCarId === car.id;
+        const affordable = wallet >= car.price;
+
+        const title = document.createElement("div");
+        title.className = "car-title";
+        title.innerHTML = `<span>${car.name}</span><span>${car.price === 0 ? "免费" : car.price + " 元"}</span>`;
+        card.appendChild(title);
+
+        const speedMeta = document.createElement("div");
+        speedMeta.className = "car-meta";
+        speedMeta.innerHTML = `<span>极速 ${car.topSpeed}</span><span>操控 ${car.handling.toFixed(1)}</span>`;
+        card.appendChild(speedMeta);
+
+        const bar = document.createElement("div");
+        bar.className = "car-bar";
+        const fill = document.createElement("span");
+        fill.style.width = `${Math.min(100, Math.round((car.topSpeed / 300) * 100))}%`;
+        fill.style.background = `linear-gradient(90deg, ${car.color}, #22d3ee)`;
+        bar.appendChild(fill);
+        card.appendChild(bar);
+
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "car-btn";
+        if (isSelected) {
+          btn.textContent = "已选择";
+          btn.classList.add("lock");
+          btn.disabled = true;
+        } else if (!isOwned && !affordable) {
+          btn.textContent = "资金不足";
+          btn.classList.add("lock");
+          btn.disabled = true;
+        } else if (!isOwned) {
+          btn.textContent = `购买并选择`;
+          btn.classList.add("buy");
+          btn.addEventListener("click", () => {
+            wallet -= car.price;
+            owned.add(car.id);
+            selectedCarId = car.id;
+            saveGarage();
+            renderCars();
+            updateHud();
+          });
+        } else {
+          btn.textContent = "选择车辆";
+          btn.addEventListener("click", () => {
+            selectedCarId = car.id;
+            saveGarage();
+            renderCars();
+            updateHud();
+          });
+        }
+        card.appendChild(btn);
+
+        if (isSelected) {
+          const tag = document.createElement("div");
+          tag.className = "selected-tag";
+          tag.textContent = "当前驾驶";
+          card.appendChild(tag);
+        }
+
+        carsEl.appendChild(card);
+      }
+    }
+
+    function updateHud() {
+      moneyEl.textContent = String(Math.floor(wallet));
+      speedEl.textContent = String(Math.max(0, Math.round(speed)));
+      distanceEl.textContent = (distance / 1000).toFixed(2);
+      fuelEl.textContent = "∞";
+      fuelEl.className = "good";
+      coordEl.textContent = `${Math.round(player.x)},${Math.round(player.z)}`;
+      carNameEl.textContent = currentCar().name;
+      if (incidentState === "none") {
+        caseStateEl.textContent = "无";
+        caseStateEl.className = "good";
+      } else if (incidentState === "explosion") {
+        caseStateEl.textContent = "爆炸";
+        caseStateEl.className = "warn";
+      } else if (incidentState === "chase") {
+        caseStateEl.textContent = "警车追捕";
+        caseStateEl.className = "warn";
+      } else if (incidentState === "caught") {
+        caseStateEl.textContent = "被警车抓到";
+        caseStateEl.className = "warn";
+      } else if (incidentState === "tornado_caught") {
+        caseStateEl.textContent = "被龙卷风吸走";
+        caseStateEl.className = "warn";
+      } else {
+        caseStateEl.textContent = "已判定";
+        caseStateEl.className = "good";
+      }
+    }
+
+    function setOverlay(show) {
+      overlay.classList.toggle("hidden", !show);
+    }
+
+    function ensureAudio() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === "suspended") audioCtx.resume();
+      return audioCtx;
+    }
+
+    function playTone(freq, duration, type = "sine", volume = 0.02, endFreq = freq) {
+      const ctxAudio = ensureAudio();
+      const now = ctxAudio.currentTime;
+      const osc = ctxAudio.createOscillator();
+      const gain = ctxAudio.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, now);
+      osc.frequency.exponentialRampToValueAtTime(Math.max(30, endFreq), now + duration);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(volume, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+      osc.connect(gain);
+      gain.connect(ctxAudio.destination);
+      osc.start(now);
+      osc.stop(now + duration + 0.02);
+    }
+
+    function startEngineSound() {
+      const ctxAudio = ensureAudio();
+      if (engineOsc) return;
+      const now = ctxAudio.currentTime;
+      engineOsc = ctxAudio.createOscillator();
+      engineGain = ctxAudio.createGain();
+      engineOsc.type = "sawtooth";
+      engineOsc.frequency.setValueAtTime(105, now);
+      engineGain.gain.setValueAtTime(0.0001, now);
+      engineGain.gain.exponentialRampToValueAtTime(0.02, now + 0.08);
+      engineOsc.connect(engineGain);
+      engineGain.connect(ctxAudio.destination);
+      engineOsc.start(now);
+    }
+
+    function stopEngineSound() {
+      if (!engineOsc || !engineGain || !audioCtx) return;
+      const now = audioCtx.currentTime;
+      engineGain.gain.cancelScheduledValues(now);
+      engineGain.gain.setValueAtTime(Math.max(engineGain.gain.value, 0.0001), now);
+      engineGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);
+      engineOsc.stop(now + 0.1);
+      engineOsc = null;
+      engineGain = null;
+    }
+
+    function updateEngineSound() {
+      if (!engineOsc || !engineGain || !audioCtx) return;
+      const now = audioCtx.currentTime;
+      const targetFreq = 98 + speed * 1.45;
+      const targetGain = running ? Math.min(0.048, 0.012 + speed / 5200) : 0.0001;
+      engineOsc.frequency.setTargetAtTime(targetFreq, now, 0.06);
+      engineGain.gain.setTargetAtTime(targetGain, now, 0.06);
+    }
+
+    function beginDrive() {
+      if (!owned.has(selectedCarId)) return;
+      ensureAudio();
+      running = true;
+      lastTs = 0;
+      fuel = Infinity;
+      incidentState = "none";
+      incidentTimer = 0;
+      incidentJudgement = "";
+      playerFault = false;
+      caseSettled = false;
+      sirenPulseTimer = 0;
+      policeGap = 340;
+      policeZ = 36 + policeGap * 1.05;
+      policeLane = 1;
+      rewardedKm = Math.floor(distance / 1000);
+      overlayTitle.textContent = "选车出发";
+      overlayText.innerHTML = "你已获得开局资金 1000 元。开得越久资金越多。<br>键盘：Q/W 加速，S 刹车，A/D 转向。手机：左转/加速/刹车/右转。";
+      startEngineSound();
+      playTone(220, 0.08, "triangle", 0.03, 320);
+      setTimeout(() => playTone(320, 0.08, "triangle", 0.03, 420), 90);
+      setOverlay(false);
+    }
+
+    function projectLocal(localX, localZ, worldY = 0) {
+      if (localZ <= 2 || localZ > 900) return null;
+      const focal = 540;
+      const horizon = canvas.height * 0.34;
+      const sx = canvas.width * 0.5 + (localX * focal) / localZ;
+      const sy = horizon + ((46 - worldY) * focal) / localZ;
+      return { sx, sy, z: localZ };
+    }
+
+    function drawCloud(cx, cy, scale, alpha) {
+      ctx.fillStyle = `rgba(248,250,252,${alpha})`;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, 42 * scale, 20 * scale, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx + 34 * scale, cy - 8 * scale, 32 * scale, 16 * scale, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx - 34 * scale, cy - 6 * scale, 30 * scale, 15 * scale, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function isPitchBlackWeather() {
+      return weatherMode === 5;
+    }
+
+    function isDarkWeather() {
+      return weatherMode === 5 || weatherMode === 7;
+    }
+
+    function drawSkyAndCity() {
+      const sky = ctx.createLinearGradient(0, 0, 0, canvas.height * 0.6);
+      if (weatherMode === 0) {
+        sky.addColorStop(0, "#fde68a");
+        sky.addColorStop(1, "#60a5fa");
+      } else if (weatherMode === 1) {
+        sky.addColorStop(0, "#7dd3fc");
+        sky.addColorStop(1, "#2563eb");
+      } else if (weatherMode === 2) {
+        sky.addColorStop(0, "#93c5fd");
+        sky.addColorStop(1, "#3b82f6");
+      } else if (weatherMode === 3) {
+        sky.addColorStop(0, "#fca5a5");
+        sky.addColorStop(1, "#fb7185");
+      } else if (weatherMode === 4) {
+        sky.addColorStop(0, "#f59e0b");
+        sky.addColorStop(1, "#ef4444");
+      } else if (weatherMode === 5) {
+        sky.addColorStop(0, "#010409");
+        sky.addColorStop(1, "#000000");
+      } else if (weatherMode === 6) {
+        sky.addColorStop(0, "#64748b");
+        sky.addColorStop(1, "#1f2937");
+      } else if (weatherMode === 7) {
+        sky.addColorStop(0, "#0f172a");
+        sky.addColorStop(1, "#000000");
+      } else {
+        sky.addColorStop(0, "#dbeafe");
+        sky.addColorStop(1, "#93c5fd");
+      }
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      if ([0, 1, 2, 3, 4, 6, 8].includes(weatherMode)) {
+        const cloudAlpha = weatherMode === 6 ? 0.58 : weatherMode === 8 ? 0.82 : 0.72;
+        drawCloud(170, 96, 0.9, cloudAlpha);
+        drawCloud(380, 120, 1.2, cloudAlpha * 0.95);
+        drawCloud(670, 88, 1.05, cloudAlpha * 0.9);
+        if (weatherMode === 6 || weatherMode === 8 || weatherMode === 2) {
+          drawCloud(520, 70, 1.3, cloudAlpha * 0.8);
+          drawCloud(850, 118, 1.15, cloudAlpha * 0.72);
+        }
+      }
+
+      const horizon = canvas.height * 0.34;
+      ctx.fillStyle = isPitchBlackWeather() ? "#020617" : weatherMode === 7 ? "#111827" : "#334155";
+      ctx.beginPath();
+      ctx.moveTo(0, horizon);
+      for (let i = 0; i <= 10; i += 1) {
+        const x = (canvas.width / 10) * i;
+        const y = horizon - (Math.sin(i * 1.2 + weatherTimer) * 4 + 16 + Math.cos(i * 0.9) * 5);
+        ctx.lineTo(x, y);
+      }
+      ctx.lineTo(canvas.width, horizon);
+      ctx.closePath();
+      ctx.fill();
+
+      const ground = ctx.createLinearGradient(0, horizon, 0, canvas.height);
+      if (isPitchBlackWeather()) {
+        ground.addColorStop(0, "#02040a");
+        ground.addColorStop(1, "#000000");
+      } else if (weatherMode === 7) {
+        ground.addColorStop(0, "#0b1220");
+        ground.addColorStop(1, "#000000");
+      } else if (weatherMode === 8) {
+        ground.addColorStop(0, "#334155");
+        ground.addColorStop(1, "#1f2937");
+      } else {
+        ground.addColorStop(0, "#374151");
+        ground.addColorStop(1, "#111827");
+      }
+      ctx.fillStyle = ground;
+      ctx.fillRect(0, horizon, canvas.width, canvas.height - horizon);
+    }
+
+    function drawRoadAndLanes() {
+      const leftNear = projectLocal(-roadHalfWidth - player.x, 10);
+      const rightNear = projectLocal(roadHalfWidth - player.x, 10);
+      const leftFar = projectLocal(-roadHalfWidth - player.x, 900);
+      const rightFar = projectLocal(roadHalfWidth - player.x, 900);
+      if (!leftNear || !rightNear || !leftFar || !rightFar) return;
+
+      ctx.fillStyle = isPitchBlackWeather() ? "#01040a" : weatherMode === 7 ? "#020617" : "#0f172a";
+      ctx.beginPath();
+      ctx.moveTo(leftNear.sx, leftNear.sy);
+      ctx.lineTo(rightNear.sx, rightNear.sy);
+      ctx.lineTo(rightFar.sx, rightFar.sy);
+      ctx.lineTo(leftFar.sx, leftFar.sy);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = isPitchBlackWeather() ? "#030712" : weatherMode === 7 ? "#0f172a" : "#475569";
+      const leftWalkNear = projectLocal(-roadHalfWidth - 18 - player.x, 10);
+      const leftWalkFar = projectLocal(-roadHalfWidth - 18 - player.x, 900);
+      const rightWalkNear = projectLocal(roadHalfWidth + 18 - player.x, 10);
+      const rightWalkFar = projectLocal(roadHalfWidth + 18 - player.x, 900);
+      if (leftWalkNear && leftWalkFar) {
+        ctx.beginPath();
+        ctx.moveTo(leftWalkNear.sx, leftWalkNear.sy);
+        ctx.lineTo(leftNear.sx, leftNear.sy);
+        ctx.lineTo(leftFar.sx, leftFar.sy);
+        ctx.lineTo(leftWalkFar.sx, leftWalkFar.sy);
+        ctx.closePath();
+        ctx.fill();
+      }
+      if (rightWalkNear && rightWalkFar) {
+        ctx.beginPath();
+        ctx.moveTo(rightNear.sx, rightNear.sy);
+        ctx.lineTo(rightWalkNear.sx, rightWalkNear.sy);
+        ctx.lineTo(rightWalkFar.sx, rightWalkFar.sy);
+        ctx.lineTo(rightFar.sx, rightFar.sy);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      ctx.strokeStyle = isDarkWeather() ? "#33415555" : "#f8fafc88";
+      ctx.lineWidth = 2;
+      for (const divider of laneDividers) {
+        for (let z = 14; z <= 900; z += 32) {
+          const a = projectLocal(divider - player.x, z);
+          const b = projectLocal(divider - player.x, z + 18);
+          if (!a || !b) continue;
+          ctx.beginPath();
+          ctx.moveTo(a.sx, a.sy);
+          ctx.lineTo(b.sx, b.sy);
+          ctx.stroke();
+        }
+      }
+    }
+
+    function drawStreetLights() {
+      if (![5, 7].includes(weatherMode)) return;
+      for (let z = 34; z <= 900; z += 24) {
+        const leftPoleTop = projectLocal(-roadHalfWidth - 26 - player.x, z, 24);
+        const leftPoleBase = projectLocal(-roadHalfWidth - 26 - player.x, z, 0);
+        const rightPoleTop = projectLocal(roadHalfWidth + 26 - player.x, z, 24);
+        const rightPoleBase = projectLocal(roadHalfWidth + 26 - player.x, z, 0);
+        if (leftPoleTop && leftPoleBase) {
+          ctx.strokeStyle = "#94a3b8aa";
+          ctx.lineWidth = Math.max(1, 190 / leftPoleTop.z);
+          ctx.beginPath();
+          ctx.moveTo(leftPoleBase.sx, leftPoleBase.sy);
+          ctx.lineTo(leftPoleTop.sx, leftPoleTop.sy);
+          ctx.stroke();
+          const glowR = Math.max(2, 420 / leftPoleTop.z);
+          const glow = ctx.createRadialGradient(leftPoleTop.sx, leftPoleTop.sy, 0, leftPoleTop.sx, leftPoleTop.sy, glowR * 2.8);
+          glow.addColorStop(0, "#fde68acc");
+          glow.addColorStop(0.55, "#facc1533");
+          glow.addColorStop(1, "#f59e0b00");
+          ctx.fillStyle = glow;
+          ctx.beginPath();
+          ctx.arc(leftPoleTop.sx, leftPoleTop.sy, glowR * 2.8, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        if (rightPoleTop && rightPoleBase) {
+          ctx.strokeStyle = "#94a3b8aa";
+          ctx.lineWidth = Math.max(1, 190 / rightPoleTop.z);
+          ctx.beginPath();
+          ctx.moveTo(rightPoleBase.sx, rightPoleBase.sy);
+          ctx.lineTo(rightPoleTop.sx, rightPoleTop.sy);
+          ctx.stroke();
+          const glowR = Math.max(2, 420 / rightPoleTop.z);
+          const glow = ctx.createRadialGradient(rightPoleTop.sx, rightPoleTop.sy, 0, rightPoleTop.sx, rightPoleTop.sy, glowR * 2.8);
+          glow.addColorStop(0, "#fde68acc");
+          glow.addColorStop(0.55, "#facc1533");
+          glow.addColorStop(1, "#f59e0b00");
+          ctx.fillStyle = glow;
+          ctx.beginPath();
+          ctx.arc(rightPoleTop.sx, rightPoleTop.sy, glowR * 2.8, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+
+    function drawRain(intensity) {
+      ctx.strokeStyle = intensity > 0.8 ? "#bfdbfe88" : "#cbd5e155";
+      ctx.lineWidth = intensity > 0.8 ? 1.4 : 1;
+      const count = Math.floor(90 + intensity * 110);
+      for (let i = 0; i < count; i += 1) {
+        const seed = i * 12.37;
+        const x = ((seed * 37 + performance.now() * (0.08 + intensity * 0.07)) % (canvas.width + 40)) - 20;
+        const y = ((seed * 53 + performance.now() * (0.32 + intensity * 0.2)) % (canvas.height + 80)) - 40;
+        const len = 9 + intensity * 12;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x - 4 - intensity * 5, y + len);
+        ctx.stroke();
+      }
+    }
+
+    function drawSnow() {
+      ctx.fillStyle = "#f8fafccc";
+      const count = 120;
+      for (let i = 0; i < count; i += 1) {
+        const seed = i * 9.17;
+        const x = ((seed * 47 + performance.now() * 0.02) % (canvas.width + 20)) - 10;
+        const y = ((seed * 29 + performance.now() * 0.08) % (canvas.height + 30)) - 15;
+        const r = 0.8 + ((seed * 13) % 1.6);
+        ctx.beginPath();
+        ctx.arc(x + Math.sin(seed + performance.now() * 0.002) * 4, y, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function drawTornado() {
+      const horizon = canvas.height * 0.34;
+      const anchor = projectLocal(tornadoX - player.x, 240, 0);
+      if (!anchor) return;
+      const cx = anchor.sx;
+      const baseY = horizon + 22;
+      const topY = horizon - 64;
+      const spin = performance.now() * 0.006;
+      for (let i = 0; i < 8; i += 1) {
+        const t = i / 8;
+        const y = topY + (baseY - topY) * t;
+        const r = 46 - t * 38;
+        ctx.strokeStyle = `rgba(203,213,225,${0.08 + t * 0.11})`;
+        ctx.lineWidth = 1.2 + t * 1.4;
+        ctx.beginPath();
+        ctx.ellipse(cx + Math.sin(spin + i * 0.8) * 8, y, r, r * 0.34, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+
+    function triggerTornadoSuction() {
+      speed = 0;
+      running = false;
+      stopEngineSound();
+      incidentState = "tornado_caught";
+      overlayTitle.textContent = "你被龙卷风吸走了";
+      overlayText.innerHTML = "你离龙卷风太近，车辆被卷走。<br>点击“开始驾驶”继续，或“重置资金与车库”重开。";
+      setOverlay(true);
+    }
+
+    function drawWeatherFX() {
+      if (weatherMode === 5) drawRain(0.78);
+      if (weatherMode === 6) drawTornado();
+      if (weatherMode === 7) {
+        drawRain(1);
+        if (Math.sin(performance.now() * 0.03) > 0.985) {
+          ctx.fillStyle = "#e2e8f022";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+      }
+      if (weatherMode === 8) drawSnow();
+    }
+
+    function drawRoadsideLandmarks() {
+      for (let z = 80; z <= 900; z += 140) {
+        const phase = Math.floor((distance + z) / 140) % 4;
+        if (phase === 0 || phase === 2) {
+          const side = phase === 0 ? -1 : 1;
+          const base = projectLocal(side * (roadHalfWidth + 54) - player.x * 0.2, z, 0);
+          const top = projectLocal(side * (roadHalfWidth + 54) - player.x * 0.2, z, 20);
+          if (!base || !top) continue;
+          const w = Math.max(8, 540 / top.z);
+          const h = Math.max(10, 680 / top.z);
+          ctx.fillStyle = "#1e293b";
+          ctx.fillRect(base.sx - w * 1.1, base.sy - h, w * 2.2, h);
+          ctx.fillStyle = "#ef4444";
+          ctx.fillRect(base.sx - w * 0.95, base.sy - h * 1.04, w * 1.9, h * 0.15);
+          ctx.fillStyle = "#e2e8f0";
+          ctx.fillRect(base.sx - w * 0.7, base.sy - h * 0.72, w * 1.4, h * 0.34);
+          if (Math.abs(z - 130) < 20 && side === -1 && fuel < 24) {
+            ctx.fillStyle = "#fde047";
+            ctx.fillRect(base.sx - w * 0.28, base.sy - h * 0.66, w * 0.56, h * 0.18);
+          }
+        } else {
+          const side = phase === 1 ? -1 : 1;
+          const center = projectLocal(side * (roadHalfWidth + 48) - player.x * 0.16, z, 0);
+          if (!center) continue;
+          const r = Math.max(7, 520 / center.z);
+          ctx.fillStyle = "#14532d";
+          ctx.beginPath();
+          ctx.arc(center.sx, center.sy - r * 0.4, r * 1.6, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#22c55e";
+          ctx.beginPath();
+          ctx.arc(center.sx - r * 0.7, center.sy - r * 0.8, r * 0.65, 0, Math.PI * 2);
+          ctx.arc(center.sx + r * 0.6, center.sy - r * 0.9, r * 0.55, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#84cc16";
+          for (let i = 0; i < 4; i += 1) {
+            ctx.fillRect(center.sx - r * 1.2 + i * r * 0.6, center.sy - r * 0.2 + (i % 2) * 2, r * 0.35, r * 0.25);
+          }
+        }
+      }
+    }
+
+    function drawCityBuildings() {
+      const baseIndex = Math.floor(distance / 28);
+      for (let i = 0; i < 44; i += 1) {
+        const worldSlice = baseIndex + i;
+        const z = 36 + i * 20 - (distance % 28) * 0.7;
+        if (z < 12 || z > 900) continue;
+        const leftHeight = 26 + ((worldSlice * 17) % 62);
+        const rightHeight = 24 + ((worldSlice * 11) % 68);
+        const leftWidth = 22 + ((worldSlice * 5) % 16);
+        const rightWidth = 20 + ((worldSlice * 9) % 18);
+        const leftX = -122 - ((worldSlice * 13) % 56) - player.x * 0.2;
+        const rightX = 122 + ((worldSlice * 7) % 56) - player.x * 0.2;
+
+        const leftTop = projectLocal(leftX, z, leftHeight);
+        const leftBase = projectLocal(leftX, z, 0);
+        if (leftTop && leftBase) {
+          const w = Math.max(3, (leftWidth * 620) / leftTop.z);
+          const h = Math.max(8, ((leftHeight + 10) * 620) / leftTop.z);
+          const leftShade = isDarkWeather() ? "#0b1220" : worldSlice % 2 === 0 ? "#334155" : "#1f2937";
+          ctx.fillStyle = leftShade;
+          ctx.fillRect(leftBase.sx - w / 2, leftBase.sy - h, w, h);
+          if (!isDarkWeather() && w > 7 && h > 20) {
+            ctx.fillStyle = weatherMode === 1 ? "#cbd5e133" : "#fde68a44";
+            for (let k = 0; k < 3; k += 1) {
+              const wy = leftBase.sy - h + 6 + k * (h / 4);
+              ctx.fillRect(leftBase.sx - w * 0.25, wy, w * 0.12, 3);
+              ctx.fillRect(leftBase.sx + w * 0.05, wy, w * 0.12, 3);
+            }
+          }
+        }
+
+        const rightTop = projectLocal(rightX, z, rightHeight);
+        const rightBase = projectLocal(rightX, z, 0);
+        if (rightTop && rightBase) {
+          const w = Math.max(3, (rightWidth * 620) / rightTop.z);
+          const h = Math.max(8, ((rightHeight + 10) * 620) / rightTop.z);
+          const rightShade = isDarkWeather() ? "#0f172a" : worldSlice % 3 === 0 ? "#475569" : "#374151";
+          ctx.fillStyle = rightShade;
+          ctx.fillRect(rightBase.sx - w / 2, rightBase.sy - h, w, h);
+          if (!isDarkWeather() && w > 7 && h > 20) {
+            ctx.fillStyle = weatherMode === 1 ? "#cbd5e133" : "#fde68a44";
+            for (let k = 0; k < 3; k += 1) {
+              const wy = rightBase.sy - h + 6 + k * (h / 4);
+              ctx.fillRect(rightBase.sx - w * 0.2, wy, w * 0.12, 3);
+              ctx.fillRect(rightBase.sx + w * 0.1, wy, w * 0.12, 3);
+            }
+          }
+        }
+      }
+    }
+
+    function getSedanSizeByDepth(depthZ) {
+      const bodyW = Math.min(132, Math.max(42, 3600 / depthZ));
+      const bodyH = bodyW * 0.42;
+      return { bodyW, bodyH };
+    }
+
+    function drawTrafficCar(item) {
+      const localX = laneCenters[item.lane] - player.x;
+      const top = projectLocal(localX, item.z, 17);
+      const base = projectLocal(localX, item.z, 0);
+      if (!top || !base) return;
+      const { bodyW, bodyH } = getSedanSizeByDepth(top.z);
+      const left = base.sx - bodyW / 2;
+      const topY = base.sy - bodyH * 0.76;
+
+      ctx.fillStyle = "#02061766";
+      ctx.beginPath();
+      ctx.ellipse(base.sx, base.sy + bodyH * 0.05, bodyW * 0.58, bodyH * 0.16, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      const carPaint = ctx.createLinearGradient(left, topY, left, topY + bodyH);
+      carPaint.addColorStop(0, "#f8fafc");
+      carPaint.addColorStop(0.08, item.color);
+      carPaint.addColorStop(1, "#334155");
+      ctx.fillStyle = carPaint;
+      ctx.fillRect(left + bodyW * 0.02, topY + bodyH * 0.28, bodyW * 0.96, bodyH * 0.54);
+      ctx.fillRect(left + bodyW * 0.2, topY + bodyH * 0.12, bodyW * 0.6, bodyH * 0.2);
+      ctx.fillRect(left + bodyW * 0.3, topY + bodyH * 0.04, bodyW * 0.4, bodyH * 0.07);
+      ctx.fillStyle = "#dbeafe";
+      ctx.fillRect(left + bodyW * 0.33, topY + bodyH * 0.11, bodyW * 0.34, bodyH * 0.1);
+      ctx.fillStyle = "#0f172a";
+      ctx.fillRect(left - bodyW * 0.03, topY + bodyH * 0.36, bodyW * 0.11, bodyH * 0.16);
+      ctx.fillRect(left + bodyW * 0.92, topY + bodyH * 0.36, bodyW * 0.11, bodyH * 0.16);
+      ctx.fillRect(left - bodyW * 0.03, topY + bodyH * 0.68, bodyW * 0.11, bodyH * 0.16);
+      ctx.fillRect(left + bodyW * 0.92, topY + bodyH * 0.68, bodyW * 0.11, bodyH * 0.16);
+      ctx.fillStyle = "#f8fafc";
+      ctx.fillRect(left + bodyW * 0.18, topY + bodyH * 0.84, bodyW * 0.64, bodyH * 0.04);
+      ctx.fillStyle = item.direction === -1 ? "#fef08a" : "#ef4444";
+      ctx.fillRect(left + bodyW * 0.25, topY + bodyH * 0.76, bodyW * 0.15, bodyH * 0.07);
+      ctx.fillRect(left + bodyW * 0.6, topY + bodyH * 0.76, bodyW * 0.15, bodyH * 0.07);
+      if (item.needsFuel && item.direction === 1) {
+        ctx.fillStyle = "#fde047";
+        ctx.fillRect(left + bodyW * 0.46, topY + bodyH * 0.26, bodyW * 0.08, bodyH * 0.08);
+      }
+    }
+
+    function spawnTraffic() {
+      const lane = Math.floor(Math.random() * laneCenters.length);
+      const opposite = Math.random() < 0.36;
+      const needsFuel = !opposite && Math.random() < 0.28;
+      traffic.push({
+        lane,
+        z: opposite ? 330 + Math.random() * 340 : 220 + Math.random() * 300,
+        speed: opposite ? 145 + Math.random() * 80 : 115 + Math.random() * 110,
+        direction: opposite ? -1 : 1,
+        needsFuel,
+        fuelState: needsFuel ? "seeking" : "ok",
+        color: ["#ef4444", "#22c55e", "#0ea5e9", "#f59e0b", "#a855f7"][Math.floor(Math.random() * 5)]
+      });
+    }
+
+    function drawExplosion() {
+      const centerX = laneCenters[explosionLane] - player.x;
+      const core = projectLocal(centerX, explosionZ, 4);
+      if (!core) return;
+      const radius = Math.max(12, 120 / core.z) * (0.6 + Math.min(1.2, incidentTimer * 2));
+      const blast = ctx.createRadialGradient(core.sx, core.sy - radius * 0.2, radius * 0.18, core.sx, core.sy, radius);
+      blast.addColorStop(0, "#fef08a");
+      blast.addColorStop(0.45, "#f97316");
+      blast.addColorStop(1, "#ef444422");
+      ctx.fillStyle = blast;
+      ctx.beginPath();
+      ctx.arc(core.sx, core.sy, radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function drawPoliceCar() {
+      const laneOffset = laneCenters[policeLane] - player.x;
+      const nearRatio = 1 - Math.min(1, policeGap / 230);
+      const bodyW = 132 + nearRatio * 8;
+      const bodyH = bodyW * 0.42;
+      const baseX = canvas.width * 0.5 + (laneOffset / 70) * 68;
+      const baseY = canvas.height * 0.992 - nearRatio * 128;
+      const left = baseX - bodyW / 2;
+      const topY = baseY - bodyH * 0.76;
+      ctx.fillStyle = "#02061766";
+      ctx.beginPath();
+      ctx.ellipse(baseX, baseY + bodyH * 0.08, bodyW * 0.58, bodyH * 0.16, 0, 0, Math.PI * 2);
+      ctx.fill();
+      const paint = ctx.createLinearGradient(left, topY, left, topY + bodyH);
+      paint.addColorStop(0, "#ffffff");
+      paint.addColorStop(0.2, "#1d4ed8");
+      paint.addColorStop(1, "#1e293b");
+      ctx.fillStyle = paint;
+      ctx.fillRect(left + bodyW * 0.02, topY + bodyH * 0.28, bodyW * 0.96, bodyH * 0.54);
+      ctx.fillRect(left + bodyW * 0.2, topY + bodyH * 0.12, bodyW * 0.6, bodyH * 0.2);
+      ctx.fillStyle = "#dbeafe";
+      ctx.fillRect(left + bodyW * 0.33, topY + bodyH * 0.11, bodyW * 0.34, bodyH * 0.1);
+      ctx.fillStyle = "#0f172a";
+      ctx.fillRect(left - bodyW * 0.03, topY + bodyH * 0.36, bodyW * 0.11, bodyH * 0.16);
+      ctx.fillRect(left + bodyW * 0.92, topY + bodyH * 0.36, bodyW * 0.11, bodyH * 0.16);
+      ctx.fillRect(left - bodyW * 0.03, topY + bodyH * 0.68, bodyW * 0.11, bodyH * 0.16);
+      ctx.fillRect(left + bodyW * 0.92, topY + bodyH * 0.68, bodyW * 0.11, bodyH * 0.16);
+      const blinkOn = Math.floor(incidentTimer * 8) % 2 === 0;
+      ctx.fillStyle = blinkOn ? "#ef4444" : "#93c5fd";
+      ctx.fillRect(left + bodyW * 0.38, topY + bodyH * 0.04, bodyW * 0.1, bodyH * 0.08);
+      ctx.fillStyle = blinkOn ? "#93c5fd" : "#ef4444";
+      ctx.fillRect(left + bodyW * 0.52, topY + bodyH * 0.04, bodyW * 0.1, bodyH * 0.08);
+    }
+
+    function triggerAccident(item) {
+      const crashSpeed = speed;
+      resumeSpeedAfterCrash = Math.max(95, Math.min(currentCar().topSpeed * 0.72, speed * 0.92 + 35));
+      speed = 0;
+      stopEngineSound();
+      incidentState = "explosion";
+      incidentTimer = 0;
+      sirenPulseTimer = 0;
+      incidentJudgement = "";
+      caseSettled = false;
+      playerFault = crashSpeed > 210 || Math.abs(laneCenters[item.lane] - player.x) < 8;
+      explosionLane = item.lane;
+      explosionZ = Math.max(24, Math.min(72, item.z));
+      policeLane = item.lane;
+      policeZ = 900;
+      policeGap = 320;
+      item.z = -80;
+      playTone(110, 0.2, "sawtooth", 0.06, 45);
+      setTimeout(() => playTone(80, 0.18, "square", 0.05, 40), 70);
+    }
+
+    function updateIncident(dt) {
+      if (incidentState === "none") return;
+      incidentTimer += dt;
+      if (incidentState === "explosion" && incidentTimer > 1.15) {
+        incidentState = "chase";
+        incidentTimer = 0;
+        sirenPulseTimer = 0;
+        running = true;
+        speed = resumeSpeedAfterCrash;
+        startEngineSound();
+      } else if (incidentState === "chase") {
+        const uncatchable = ["sedan_d", "sedan_e", "sedan_f"].includes(selectedCarId);
+        const targetLane = laneCenters.reduce((best, x, idx) => Math.abs(x - player.x) < best.diff ? { diff: Math.abs(x - player.x), idx } : best, { diff: Infinity, idx: 1 }).idx;
+        policeLane = targetLane;
+        policeGap += dt * (Math.max(0, speed - 190) * (uncatchable ? 0.62 : 0.38) - Math.max(0, 188 - speed) * 0.82);
+        if (uncatchable) policeGap = Math.max(policeGap, 120);
+        policeGap = Math.max(0, Math.min(360, policeGap));
+        policeZ = 36 + policeGap * 1.05;
+        sirenPulseTimer += dt;
+        if (sirenPulseTimer >= 0.14) {
+          sirenPulseTimer = 0;
+          const step = Math.floor(performance.now() / 140) % 4;
+          if (step === 0) {
+            playTone(900, 0.12, "square", 0.052, 1180);
+          } else if (step === 1) {
+            playTone(1320, 0.11, "square", 0.056, 860);
+          } else if (step === 2) {
+            playTone(980, 0.1, "triangle", 0.046, 1480);
+          } else {
+            playTone(1500, 0.09, "triangle", 0.05, 980);
+          }
+        }
+        if (!uncatchable && policeGap <= 1) {
+          speed = 0;
+          running = false;
+          stopEngineSound();
+          incidentState = "caught";
+          incidentTimer = 0;
+          if (!caseSettled) {
+            if (playerFault) {
+              wallet -= 1;
+              incidentJudgement = "判定：你的责任，向警察缴纳 1 元。";
+            } else {
+              wallet += 10;
+              incidentJudgement = "判定：不是你的责任，警察补偿你 10 元。";
+            }
+            caseSettled = true;
+            saveGarage();
+          }
+          overlayTitle.textContent = "你被警车抓到了";
+          overlayText.innerHTML = `${incidentJudgement}<br>点击“开始驾驶”继续，或“重置资金与车库”重开。`;
+          setOverlay(true);
+        }
+      }
+    }
+
+    function updateTraffic(dt) {
+      if (!running) return;
+      trafficSpawnTimer += dt;
+      const interval = Math.max(0.45, 1.25 - speed / 280);
+      if (trafficSpawnTimer >= interval) {
+        trafficSpawnTimer = 0;
+        spawnTraffic();
+      }
+
+      for (const item of traffic) {
+        if (item.needsFuel && item.direction === 1) {
+          if (item.fuelState === "seeking" && item.z > 120 && item.z < 240) {
+            item.speed = Math.max(35, item.speed - dt * 120);
+            if (item.speed <= 38) item.fuelState = "refueling";
+          } else if (item.fuelState === "refueling") {
+            item.speed += dt * 40;
+            if (item.speed >= 95) {
+              item.speed = 95 + Math.random() * 40;
+              item.fuelState = "done";
+            }
+          }
+        }
+        const relative = item.direction === -1 ? speed + item.speed : speed - item.speed;
+        item.z -= (relative / 3.6) * dt * 8.5;
+      }
+      for (let i = traffic.length - 1; i >= 0; i -= 1) {
+        if (traffic[i].z < -40 || traffic[i].z > 940) traffic.splice(i, 1);
+      }
+    }
+
+    function trafficCollision() {
+      for (const item of traffic) {
+        const laneDelta = Math.abs(laneCenters[item.lane] - player.x);
+        if (speed > 78 && item.z > 18 && item.z < 36 && laneDelta < 11) {
+          triggerAccident(item);
+          return;
+        }
+      }
+    }
+
+    function drawPlayerCarRear() {
+      const car = currentCar();
+      const midX = canvas.width * 0.5;
+      const y = canvas.height * 0.825;
+      ctx.fillStyle = "#02061796";
+      ctx.beginPath();
+      ctx.ellipse(midX, y + 76, 72, 14, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      const bodyLeft = midX - 66;
+      const bodyTop = y + 10;
+      const bodyW = 132;
+      const bodyH = 54;
+      const paint = ctx.createLinearGradient(0, bodyTop, 0, bodyTop + bodyH);
+      paint.addColorStop(0, "#f8fafc");
+      paint.addColorStop(0.08, car.color);
+      paint.addColorStop(1, "#334155");
+      ctx.fillStyle = paint;
+      ctx.fillRect(bodyLeft, bodyTop + 8, bodyW, bodyH - 6);
+      ctx.fillRect(midX - 38, bodyTop - 2, 76, 18);
+      ctx.fillRect(midX - 28, bodyTop - 10, 56, 10);
+
+      ctx.fillStyle = "#0f172a";
+      ctx.fillRect(bodyLeft - 3, bodyTop + 16, 8, 17);
+      ctx.fillRect(bodyLeft + bodyW - 5, bodyTop + 16, 8, 17);
+      ctx.fillRect(bodyLeft - 3, bodyTop + 44, 8, 16);
+      ctx.fillRect(bodyLeft + bodyW - 5, bodyTop + 44, 8, 16);
+
+      ctx.fillStyle = "#bae6fd";
+      ctx.fillRect(midX - 25, bodyTop - 8, 50, 9);
+      ctx.fillRect(midX - 34, bodyTop + 2, 68, 8);
+
+      ctx.fillStyle = "#ef4444";
+      ctx.fillRect(bodyLeft + 10, bodyTop + 45, 16, 7);
+      ctx.fillRect(bodyLeft + bodyW - 26, bodyTop + 45, 16, 7);
+      ctx.fillStyle = "#f8fafc";
+      ctx.fillRect(midX - 8, bodyTop + 46, 16, 6);
+    }
+
+    function updatePhysics(dt) {
+      if (!running) return;
+      const car = currentCar();
+      const acc = keys.acc ? car.accel : 0;
+      const brake = keys.brake ? 36 : 0;
+      const resistance = 10 + speed * 0.06;
+      speed += (acc - brake - resistance) * dt;
+      speed = Math.max(0, Math.min(car.topSpeed, speed));
+
+      const steerInput = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
+      const steerAmount = steerInput * (car.handling * 34) * dt * (0.35 + Math.min(1, speed / 90));
+      player.x = Math.max(-68, Math.min(68, player.x + steerAmount));
+
+      const meterSpeed = speed / 3.6;
+      distance += meterSpeed * dt * 9;
+      if (weatherMode === 6 && Math.abs(player.x - tornadoX) < 15 && speed > 26) {
+        triggerTornadoSuction();
+        return;
+      }
+
+      const reachedKm = Math.floor(distance / 1000);
+      if (reachedKm > rewardedKm) {
+        wallet += (reachedKm - rewardedKm) * 100;
+        rewardedKm = reachedKm;
+        saveGarage();
+      }
+      player.z = distance;
+      if (incidentState === "none") {
+        policeGap += dt * (Math.max(0, speed - 150) * 0.22 - Math.max(0, 149 - speed) * 0.12);
+        policeGap = Math.max(300, Math.min(420, policeGap));
+        policeZ = 36 + policeGap * 1.05;
+      }
+      updateTraffic(dt);
+      trafficCollision();
+    }
+
+    function tick(ts) {
+      if (!lastTs) lastTs = ts;
+      const dt = Math.min(0.035, (ts - lastTs) / 1000);
+      lastTs = ts;
+      weatherTimer += dt;
+      if (weatherTimer >= 12) {
+        weatherTimer = 0;
+        weatherMode = (weatherMode + 1) % 9;
+      }
+      updatePhysics(dt);
+      updateIncident(dt);
+      updateEngineSound();
+      drawSkyAndCity();
+      drawCityBuildings();
+      drawRoadsideLandmarks();
+      drawRoadAndLanes();
+      drawStreetLights();
+      drawWeatherFX();
+      traffic.sort((a, b) => b.z - a.z);
+      for (const item of traffic) drawTrafficCar(item);
+      if (incidentState === "explosion") drawExplosion();
+      if (incidentState === "none" || incidentState === "chase" || incidentState === "caught") drawPoliceCar();
+      drawPlayerCarRear();
+      updateHud();
+      requestAnimationFrame(tick);
+    }
+
+    function bindKeyState(code, pressed) {
+      if (code === "KeyA" || code === "ArrowLeft") keys.left = pressed;
+      if (code === "KeyD" || code === "ArrowRight") keys.right = pressed;
+      if (code === "KeyW" || code === "ArrowUp" || code === "KeyQ") keys.acc = pressed;
+      if (code === "KeyS" || code === "ArrowDown") keys.brake = pressed;
+    }
+
+    function pressKey(name) {
+      keys[name] = true;
+    }
+
+    function releaseKey(name) {
+      keys[name] = false;
+    }
+
+    document.addEventListener("keydown", (event) => bindKeyState(event.code, true));
+    document.addEventListener("keyup", (event) => bindKeyState(event.code, false));
+
+    startBtn.addEventListener("click", beginDrive);
+    resetMoneyBtn.addEventListener("click", () => {
+      wallet = 1000;
+      owned = new Set(["sedan_a"]);
+      selectedCarId = "sedan_a";
+      speed = 0;
+      fuel = Infinity;
+      distance = 0;
+      player.x = 0;
+      player.z = 0;
+      rewardedKm = 0;
+      traffic.length = 0;
+      trafficSpawnTimer = 0;
+      running = false;
+      incidentState = "none";
+      incidentTimer = 0;
+      policeZ = 920;
+      policeGap = 340;
+      sirenPulseTimer = 0;
+      incidentJudgement = "";
+      playerFault = false;
+      caseSettled = false;
+      stopEngineSound();
+      overlayTitle.textContent = "选车出发";
+      overlayText.innerHTML = "你已获得开局资金 1000 元。开得越久资金越多。<br>键盘：Q/W 加速，S 刹车，A/D 转向。手机：左转/加速/刹车/右转。";
+      saveGarage();
+      renderCars();
+      updateHud();
+      setOverlay(true);
+    });
+
+    leftBtn.addEventListener("pointerdown", () => pressKey("left"));
+    leftBtn.addEventListener("pointerup", () => releaseKey("left"));
+    leftBtn.addEventListener("pointerleave", () => releaseKey("left"));
+    rightBtn.addEventListener("pointerdown", () => pressKey("right"));
+    rightBtn.addEventListener("pointerup", () => releaseKey("right"));
+    rightBtn.addEventListener("pointerleave", () => releaseKey("right"));
+    accBtn.addEventListener("pointerdown", () => pressKey("acc"));
+    accBtn.addEventListener("pointerup", () => releaseKey("acc"));
+    accBtn.addEventListener("pointerleave", () => releaseKey("acc"));
+    brakeBtn.addEventListener("pointerdown", () => pressKey("brake"));
+    brakeBtn.addEventListener("pointerup", () => releaseKey("brake"));
+    brakeBtn.addEventListener("pointerleave", () => releaseKey("brake"));
+
+    renderCars();
+    updateHud();
+    setOverlay(true);
+    requestAnimationFrame(tick);
+  </script>
+</body>
+</html>
