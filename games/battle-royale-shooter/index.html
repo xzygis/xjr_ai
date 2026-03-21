@@ -134,17 +134,11 @@
   <main class="game-shell">
     <section class="hud">
       <div class="hud-left">
-        <div class="chip" id="hpChip">生命 100</div>
-        <div class="chip" id="scoreChip">积分 0</div>
-        <div class="chip" id="coinChip">金币 0</div>
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb        <div class="chip" id="hpChip">生命 100</div>
         <div class="chip" id="surviveChip">生存 0.0 秒</div>
-        <div class="chip" id="activeChip">状态 普通</div>
-      </div>
-      <div class="hud-right">
-        <button class="buy-btn" id="buySpring">30金币 弹跳弹簧</button>
-        <button class="buy-btn" id="buyFly">100金币 飞行装置(5秒)</button>
-        <button class="buy-btn" id="buyJet">200积分 喷气背包(15秒)</button>
-        <button class="buy-btn" id="buyRocket">1000积分 火箭穿障</button>
+        <div class="chip" id="weaponChip">武器: 火箭发射器</div>
+        <div class="chip" id="nukeChip">核弹(6): 准备就绪</div>
+        <div class="chip" id="hBombChip">氢弹(7): 准备就绪</div>
       </div>
     </section>
     <section class="stage">
@@ -152,30 +146,83 @@
       <div class="overlay" id="overlay">
         <div class="card" id="panel">
           <h1>枪战吃鸡战场</h1>
-          <p>WASD移动，鼠标瞄准射击，空格冲刺，Q触发弹跳弹簧。</p>
-          <p>坚持30秒获得1金币；30金币买弹簧；100金币买飞行装置5秒；200积分买喷气背包15秒；1000积分买火箭穿越障碍。</p>
+          <p>WASD移动，鼠标瞄准，左键/P键自动射击，B召唤小兵。</p>
+          <p>按 1-5 切换武器: 1手枪 2冲锋枪 3狙击枪 4火箭 5突击步枪</p>
+          <p>按 6 发射核弹(10s冷却，消灭一半敌人)，按 7 发射氢弹(30s冷却，全屏秒杀)。</p>
           <button id="startBtn">开始战斗</button>
         </div>
       </div>
     </section>
-    <section class="tips" id="msgLine">提示：尽量沿掩体边缘移动，避免被集火。</section>
+    <section class="tips" id="msgLine">提示：数字键1-7切换武器，B键在基地召唤无敌小兵。</section>
   </main>
   <script>
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
     const hpChip = document.getElementById("hpChip");
-    const scoreChip = document.getElementById("scoreChip");
-    const coinChip = document.getElementById("coinChip");
     const surviveChip = document.getElementById("surviveChip");
-    const activeChip = document.getElementById("activeChip");
+    const weaponChip = document.getElementById("weaponChip");
+    const nukeChip = document.getElementById("nukeChip");
+    const hBombChip = document.getElementById("hBombChip");
     const msgLine = document.getElementById("msgLine");
     const overlay = document.getElementById("overlay");
     const panel = document.getElementById("panel");
     const startBtn = document.getElementById("startBtn");
-    const buySpring = document.getElementById("buySpring");
-    const buyFly = document.getElementById("buyFly");
-    const buyJet = document.getElementById("buyJet");
-    const buyRocket = document.getElementById("buyRocket");
+
+    // Web Audio API Sound System
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    
+    function playSound(type) {
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      
+      const osc = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      
+      osc.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      
+      if (type === 'shoot') {
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.1);
+        gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.1);
+      } else if (type === 'hit') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.1);
+        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.1);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.1);
+      } else if (type === 'buy') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+        osc.frequency.setValueAtTime(600, audioCtx.currentTime + 0.1);
+        osc.frequency.setValueAtTime(800, audioCtx.currentTime + 0.2);
+        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.3);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.3);
+      } else if (type === 'spawn') {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+        osc.frequency.linearRampToValueAtTime(600, audioCtx.currentTime + 0.2);
+        gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
+        gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.2);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.2);
+      } else if (type === 'gameover') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.5);
+        gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.5);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.5);
+      }
+    }
 
     const W = 1280;
     const H = 720;
@@ -186,29 +233,35 @@
       running: false,
       player: null,
       enemies: [],
+      minions: [],
+      giantMinion: null, // Track giant minion
       bullets: [],
       enemyBullets: [],
       particles: [],
       obstacles: [],
-      score: 0,
-      coins: 0,
-      springCharges: 0,
-      pendingFlyTime: 0,
-      pendingJetTime: 0,
-      rocketOwned: false,
       survival: 0,
-      coinTick: 0,
       enemySpawnTimer: 0,
-      messageTimer: 0
+      messageTimer: 0,
+      autoFire: false,
+      currentWeapon: 4, // 1: Pistol, 2: SMG, 3: Sniper, 4: Rocket, 5: Assault Rifle
+      nukeCooldown: 0,  // Weapon 6
+      hBombCooldown: 0  // Weapon 7
     };
 
-    function renderHomePanel(title = "枪战吃鸡战场", subtitle = "WASD移动，鼠标瞄准射击，空格冲刺，Q触发弹跳弹簧。") {
+    const WEAPON_NAMES = {
+      1: "手枪",
+      2: "冲锋枪",
+      3: "狙击枪",
+      4: "火箭发射器",
+      5: "突击步枪"
+    };
+
+    function renderHomePanel(title = "枪战吃鸡战场", subtitle = "WASD移动，鼠标瞄准，左键/P键自动射击，B召唤无敌小兵。") {
       overlay.style.display = "flex";
       panel.innerHTML = `
         <h1>${title}</h1>
         <p>${subtitle}</p>
-        <p>当前资产：积分 ${Math.floor(state.score)} ｜ 金币 ${state.coins}</p>
-        <p>库存：弹簧×${state.springCharges} ｜ 预存飞行 ${state.pendingFlyTime.toFixed(0)}秒 ｜ 预存喷气 ${state.pendingJetTime.toFixed(0)}秒 ｜ 火箭 ${state.rocketOwned ? "已解锁(永久)" : "未解锁"}</p>
+        <p>按 1-5 切换武器，6/7发射大杀器，一直召唤小兵可合体！</p>
         <button id="startBtn">开始战斗</button>
       `;
       document.getElementById("startBtn").addEventListener("click", resetGame);
@@ -232,6 +285,9 @@
       ];
     }
 
+    // 基地框框的位置和大小
+    const baseBox = { x: W / 2 - 100, y: H / 2 - 100, w: 200, h: 200 };
+
     function resetGame() {
       state.running = true;
       state.player = {
@@ -249,6 +305,8 @@
       state.pendingFlyTime = 0;
       state.pendingJetTime = 0;
       state.enemies = [];
+      state.minions = [];
+      state.giantMinion = null;
       state.bullets = [];
       state.enemyBullets = [];
       state.particles = [];
@@ -256,6 +314,8 @@
       state.survival = 0;
       state.coinTick = 0;
       state.enemySpawnTimer = 0.8;
+      state.nukeCooldown = 0;
+      state.hBombCooldown = 0;
       state.messageTimer = 0;
       overlay.style.display = "none";
       updateHud();
@@ -264,6 +324,7 @@
 
     function stopGame() {
       state.running = false;
+      playSound('gameover');
       renderHomePanel("你被淘汰了", `本局生存 ${state.survival.toFixed(1)} 秒。你已返回主页，可继续购买后再开局。`);
     }
 
@@ -317,6 +378,7 @@
       if (state.coins < 30) return setMessage("金币不足：弹跳弹簧需要30金币。");
       state.coins -= 30;
       state.springCharges += 1;
+      playSound('buy');
       updateHud();
       setMessage("购买成功：获得1次弹跳弹簧（按Q触发）。");
     }
@@ -324,6 +386,7 @@
     function buyFlyAction() {
       if (state.coins < 100) return setMessage("金币不足：飞行装置需要100金币。");
       state.coins -= 100;
+      playSound('buy');
       if (state.running) state.player.flyingTimer = Math.max(state.player.flyingTimer, 5);
       else state.pendingFlyTime += 5;
       updateHud();
@@ -333,6 +396,7 @@
     function buyJetAction() {
       if (state.score < 200) return setMessage("积分不足：喷气背包需要200积分。");
       state.score -= 200;
+      playSound('buy');
       if (state.running) state.player.jetpackTimer = Math.max(state.player.jetpackTimer, 15);
       else state.pendingJetTime += 15;
       updateHud();
@@ -344,48 +408,78 @@
       if (state.score < 1000) return setMessage("积分不足：火箭需要1000积分。");
       state.score -= 1000;
       state.rocketOwned = true;
+      playSound('buy');
       if (state.running) state.player.rocketOn = true;
       updateHud();
       setMessage("火箭解锁成功：永久飞行并穿越障碍。");
     }
 
     function updateHud() {
-      const p = state.player;
-      hpChip.textContent = `生命 ${p ? Math.max(0, Math.ceil(p.hp)) : 100}`;
-      scoreChip.textContent = `积分 ${Math.floor(state.score)}`;
-      coinChip.textContent = `金币 ${state.coins}`;
+      hpChip.textContent = `生命 ${Math.max(0, Math.floor(state.player ? state.player.hp : 0))}`;
       surviveChip.textContent = `生存 ${state.survival.toFixed(1)} 秒`;
-      let status = "普通";
-      if (state.rocketOwned || (p && p.rocketOn)) status = "火箭永久";
-      else if (p && p.jetpackTimer > 0) status = `喷气背包 ${p.jetpackTimer.toFixed(1)}s`;
-      else if (p && p.flyingTimer > 0) status = `飞行装置 ${p.flyingTimer.toFixed(1)}s`;
-      else if (state.springCharges > 0) status = `弹簧×${state.springCharges}`;
-      activeChip.textContent = `状态 ${status}`;
-      buySpring.disabled = state.coins < 30;
-      buyFly.disabled = state.coins < 100;
-      buyJet.disabled = state.score < 200;
-      buyRocket.disabled = state.rocketOwned || state.score < 1000;
-      buyRocket.textContent = state.rocketOwned ? "火箭 已解锁" : "1000积分 火箭穿障";
+      weaponChip.textContent = `武器: ${WEAPON_NAMES[state.currentWeapon]}`;
+      
+      if (state.nukeCooldown <= 0) {
+        nukeChip.textContent = "核弹(6): 准备就绪";
+        nukeChip.style.color = "#ff4757";
+      } else {
+        nukeChip.textContent = `核弹(6): ${state.nukeCooldown.toFixed(1)}s`;
+        nukeChip.style.color = "#747d8c";
+      }
+      
+      if (state.hBombCooldown <= 0) {
+        hBombChip.textContent = "氢弹(7): 准备就绪";
+        hBombChip.style.color = "#ff4757";
+      } else {
+        hBombChip.textContent = `氢弹(7): ${state.hBombCooldown.toFixed(1)}s`;
+        hBombChip.style.color = "#747d8c";
+      }
+    }
+
+    function getWeaponStats(weaponType) {
+      let speed, damage, radius, cooldown, color, spread = 0, bulletsToFire = 1;
+      switch(weaponType) {
+        case 1: // 手枪
+          speed = 500; damage = 20; radius = 4; cooldown = 0.4; color = "#f1c40f"; break;
+        case 2: // 冲锋枪
+          speed = 600; damage = 12; radius = 3; cooldown = 0.1; color = "#e67e22"; spread = 0.15; break;
+        case 3: // 狙击枪
+          speed = 1200; damage = 100; radius = 5; cooldown = 1.2; color = "#3498db"; break;
+        case 4: // 火箭发射器
+          speed = 400; damage = 150; radius = 8; cooldown = 1.0; color = "#e74c3c"; break;
+        case 5: // 突击步枪
+          speed = 700; damage = 25; radius = 4; cooldown = 0.2; color = "#2ecc71"; spread = 0.05; break;
+        default:
+          speed = 610; damage = 24; radius = 4; cooldown = 0.16; color = "#9be7d0";
+      }
+      return { speed, damage, radius, cooldown, color, spread, bulletsToFire };
     }
 
     function firePlayerBullet() {
       const p = state.player;
       if (p.shootCd > 0) return;
       const angle = Math.atan2(mouse.y - p.y, mouse.x - p.x);
-      const speed = p.rocketOn ? 740 : 610;
-      const damage = p.rocketOn ? 48 : 24;
-      const radius = p.rocketOn ? 5 : 4;
-      p.shootCd = p.rocketOn ? 0.09 : 0.16;
-      state.bullets.push({
-        x: p.x + Math.cos(angle) * 22,
-        y: p.y + Math.sin(angle) * 22,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed,
-        damage,
-        radius,
-        phase: p.rocketOn
-      });
-      for (let i = 0; i < 4; i++) addParticle(p.x, p.y, p.rocketOn ? "#ffa733" : "#9be7d0", 2.2, 0.24);
+      
+      const stats = getWeaponStats(state.currentWeapon);
+      p.shootCd = stats.cooldown;
+      
+      for (let i = 0; i < stats.bulletsToFire; i++) {
+        const finalAngle = angle + (Math.random() - 0.5) * stats.spread;
+        state.bullets.push({
+          x: p.x + Math.cos(finalAngle) * 22,
+          y: p.y + Math.sin(finalAngle) * 22,
+          vx: Math.cos(finalAngle) * stats.speed,
+          vy: Math.sin(finalAngle) * stats.speed,
+          damage: stats.damage,
+          radius: stats.radius,
+          phase: true, // 子弹始终可以穿墙
+          isPlayerBullet: true,
+          isExplosive: state.currentWeapon === 4 // 火箭发射器特有属性
+        });
+      }
+      
+      playSound('shoot');
+      for (let i = 0; i < 4; i++) addParticle(p.x, p.y, stats.color, 2.2, 0.24);
     }
 
     function activateSpring() {
@@ -427,15 +521,155 @@
       p.flyingTimer = Math.max(0, p.flyingTimer - dt);
       p.jetpackTimer = Math.max(0, p.jetpackTimer - dt);
 
-      if (mouse.down) firePlayerBullet();
+      // 自动开火或按下鼠标时发射子弹，始终朝向鼠标当前位置
+      if (mouse.down || state.autoFire) firePlayerBullet();
       if (keys[" "]) {
         const angle = Math.atan2(mouse.y - p.y, mouse.x - p.x);
         p.x += Math.cos(angle) * 180 * dt;
         p.y += Math.sin(angle) * 180 * dt;
       }
-      if (keys["q"]) {
-        keys["q"] = false;
-        activateSpring();
+      if (keys["6"]) {
+        keys["6"] = false;
+        fireNuke();
+      }
+      if (keys["7"]) {
+        keys["7"] = false;
+        fireHBomb();
+      }
+
+      if (keys["p"]) {
+        keys["p"] = false;
+        state.autoFire = !state.autoFire;
+        setMessage(state.autoFire ? "自动开火：已开启" : "自动开火：已关闭");
+      }
+
+      if (keys["b"]) {
+        keys["b"] = false;
+        spawnMinion();
+      }
+
+      if (keys["1"]) state.currentWeapon = 1;
+      if (keys["2"]) state.currentWeapon = 2;
+      if (keys["3"]) state.currentWeapon = 3;
+      if (keys["4"]) state.currentWeapon = 4;
+      if (keys["5"]) state.currentWeapon = 5;
+    }
+
+    function fireNuke() {
+      if (state.nukeCooldown > 0) return;
+      state.nukeCooldown = 5; // Reduced to 5 seconds
+      playSound('buy'); // Use buy sound as a generic 'special' sound
+      
+      // Kill half the enemies
+      const killCount = Math.floor(state.enemies.length / 2);
+      for (let i = 0; i < killCount; i++) {
+        if (state.enemies[i]) {
+          state.enemies[i].hp = 0;
+          state.enemies[i].dead = true;
+          for (let j = 0; j < 10; j++) addParticle(state.enemies[i].x, state.enemies[i].y, "#ff9f43", 4, 0.5);
+        }
+      }
+      setMessage("核弹发射！消灭了一半的敌人。");
+    }
+
+    function fireHBomb() {
+      if (state.hBombCooldown > 0) return;
+      state.hBombCooldown = 5; // Reduced to 5 seconds
+      playSound('buy');
+      
+      // Kill all enemies
+      for (const e of state.enemies) {
+        if (e.dead) continue;
+        e.hp = 0;
+        e.dead = true;
+        for (let j = 0; j < 10; j++) addParticle(e.x, e.y, "#ff4757", 5, 0.6);
+      }
+      
+      setMessage("氢弹发射！全屏敌人被秒杀。");
+    }
+
+    function spawnMinionAt(x, y) {
+      // 增加转换视觉效果：金光爆发，然后变成蓝色小兵
+      for (let i = 0; i < 15; i++) {
+        addParticle(x, y, "#f1c40f", 4, 0.5); // 金色
+        addParticle(x, y, "#3498db", 3, 0.4); // 蓝色
+      }
+      
+      state.minions.push({
+        x: x,
+        y: y,
+        r: 12,
+        speed: 150,
+        hp: Infinity, // 无敌
+        fireCd: 0.5,
+        type: 'normal' // 普通小兵
+      });
+      checkGiantMinionMerge();
+    }
+
+    function spawnMinion() {
+      // 召唤小兵，无敌且在基地框框内生成
+      const spawnX = baseBox.x + Math.random() * baseBox.w;
+      const spawnY = baseBox.y + Math.random() * baseBox.h;
+      
+      state.minions.push({
+        x: spawnX,
+        y: spawnY,
+        r: 12,
+        speed: 150,
+        hp: Infinity, // 无敌
+        fireCd: 0.5,
+        type: 'normal' // 普通小兵
+      });
+      
+      playSound('spawn');
+      
+      // 检查是否可以合并成巨型小兵
+      checkGiantMinionMerge();
+    }
+
+    function checkGiantMinionMerge() {
+      // 假设当基地内普通小兵数量达到 10000 个时，融合成一个巨型小兵
+      const normalMinions = state.minions.filter(m => m.type === 'normal');
+      if (normalMinions.length >= 10000) {
+        // 移除这 10000 个普通小兵
+        let removed = 0;
+        state.minions = state.minions.filter(m => {
+          if (m.type === 'normal' && removed < 10000) {
+            removed++;
+            return false; // remove
+          }
+          return true; // keep
+        });
+        
+        // 生成新的巨型小兵，位置随机在地图其他地方，不在基地框内
+        let giantX = Math.random() * W;
+        let giantY = Math.random() * H;
+        
+        // 简单确保它不在基地框内出生
+        while (giantX > baseBox.x && giantX < baseBox.x + baseBox.w && 
+               giantY > baseBox.y && giantY < baseBox.y + baseBox.h) {
+          giantX = Math.random() * W;
+          giantY = Math.random() * H;
+        }
+
+        const newGiant = {
+          x: giantX,
+          y: giantY,
+          r: 40,
+          speed: 80, // 移动慢一点
+          hp: Infinity,
+          fireCd: 1.0,
+          type: 'giant',
+          // 巨型小兵的巡逻目标点
+          targetX: Math.random() * W,
+          targetY: Math.random() * H
+        };
+        state.minions.push(newGiant);
+        playSound('buy'); // 播放融合音效
+        setMessage("一万名小兵集结，融合成巨型小兵并前往外部战场！");
+      } else {
+        setMessage(`已召唤小兵！(${normalMinions.length}/10000)`);
       }
     }
 
@@ -463,6 +697,105 @@
       }
     }
 
+    function updateMinions(dt) {
+      for (const m of state.minions) {
+        // All minions aim at the mouse cursor
+        const angle = Math.atan2(mouse.y - m.y, mouse.x - m.x);
+        
+        if (m.type === 'giant') {
+          // Giant minion logic: move to target point
+          const dToTarget = Math.hypot(m.targetX - m.x, m.targetY - m.y);
+          if (dToTarget < 10) {
+            // Pick new target outside base box
+            m.targetX = Math.random() * W;
+            m.targetY = Math.random() * H;
+          } else {
+            const moveAngle = Math.atan2(m.targetY - m.y, m.targetX - m.x);
+            const nx = m.x + Math.cos(moveAngle) * m.speed * dt;
+            const ny = m.y + Math.sin(moveAngle) * m.speed * dt;
+            moveWithObstacle(m, nx, ny, false);
+          }
+          
+          // Fire at closest enemy (Hydrogen Bomb)
+          m.fireCd -= dt;
+          if (m.fireCd <= 0 && state.enemies.length > 0) { // Only fire if enemies exist
+            // Find closest enemy
+            let closestEnemy = null;
+            let minDist = Infinity;
+            for (const e of state.enemies) {
+              const d = Math.hypot(e.x - m.x, e.y - m.y);
+              if (d < minDist) {
+                minDist = d;
+                closestEnemy = e;
+              }
+            }
+
+            if (closestEnemy) {
+              // Minions fire a Hydrogen Bomb equivalent
+              m.fireCd = 5.0; // Give it a 5-second cooldown like the player's H-Bomb so it doesn't instantly wipe the screen every frame
+              playSound('buy'); // Play explosion sound
+              
+              // Visual indicator of minion firing H-Bomb
+              for (let i = 0; i < 8; i++) addParticle(m.x, m.y, "#ff4757", 4, 0.4);
+              
+              // Kill all enemies on screen (H-Bomb effect)
+              for (const e of state.enemies) {
+                if (e.dead) continue;
+                e.hp = 0;
+                e.dead = true;
+                for (let j = 0; j < 10; j++) addParticle(e.x, e.y, "#ff4757", 5, 0.6);
+                
+                // Convert killed enemy to minion
+                spawnMinionAt(e.x, e.y);
+              }
+            }
+          }
+          
+        } else {
+          // Normal minion logic
+          if (state.enemies.length === 0) continue;
+          
+          // Find closest enemy just for movement logic
+          let closestEnemy = null;
+          let minDist = Infinity;
+          for (const e of state.enemies) {
+            const d = Math.hypot(e.x - m.x, e.y - m.y);
+            if (d < minDist) {
+              minDist = d;
+              closestEnemy = e;
+            }
+          }
+          
+          if (closestEnemy) {
+            const moveAngle = Math.atan2(closestEnemy.y - m.y, closestEnemy.x - m.x);
+            // Move towards enemy if too far, stop if close enough
+            if (minDist > 100) {
+              const nx = m.x + Math.cos(moveAngle) * m.speed * dt;
+              const ny = m.y + Math.sin(moveAngle) * m.speed * dt;
+              moveWithObstacle(m, nx, ny, false);
+            }
+          }
+          
+          // Fire at closest enemy (Hydrogen Bomb)
+          m.fireCd -= dt;
+          if (m.fireCd <= 0 && closestEnemy) {
+            m.fireCd = 5.0; // 5 seconds cooldown
+            playSound('buy'); // Explosion sound
+            
+            for (let i = 0; i < 8; i++) addParticle(m.x, m.y, "#ff4757", 4, 0.4);
+            
+            // Kill all enemies on screen
+            for (const e of state.enemies) {
+              if (e.dead) continue;
+              e.hp = 0;
+              e.dead = true;
+              for (let j = 0; j < 10; j++) addParticle(e.x, e.y, "#ff4757", 5, 0.6);
+            }
+          }
+        }
+      }
+    }
+
     function updateBullets(dt) {
       const p = state.player;
       for (const b of state.bullets) {
@@ -475,11 +808,28 @@
           if (d <= b.radius + e.r) {
             e.hp -= b.damage;
             if (!b.phase) b.dead = true;
-            addParticle(e.x, e.y, "#ff7b74", 3, 0.35);
+            
+            // 爆炸武器特效
+            if (b.isExplosive) {
+              for (let i = 0; i < 15; i++) addParticle(b.x, b.y, "#e74c3c", 4, 0.4);
+              playSound('buy'); // Use buy sound as explosion
+              // 范围伤害
+              for (const other of state.enemies) {
+                if (other === e || other.dead) continue;
+                if (Math.hypot(b.x - other.x, b.y - other.y) < 60) {
+                  other.hp -= b.damage * 0.5;
+                  if (other.hp <= 0) {
+                    other.dead = true;
+                    for (let i = 0; i < 12; i++) addParticle(other.x, other.y, "#ffc26e", 3, 0.6);
+                  }
+                }
+              }
+            } else {
+              addParticle(e.x, e.y, "#ff7b74", 3, 0.35);
+            }
+            
             if (e.hp <= 0) {
               e.dead = true;
-              state.score += 120;
-              state.coins += Math.random() < 0.22 ? 1 : 0;
               for (let i = 0; i < 12; i++) addParticle(e.x, e.y, "#ffc26e", 3, 0.6);
             }
           }
@@ -493,14 +843,36 @@
         b.y += b.vy * dt;
         if (isInsideObstacle(b.x, b.y, b.radius) && !canPlayerPhase()) b.dead = true;
         const d = Math.hypot(b.x - p.x, b.y - p.y);
-        if (d <= b.radius + p.r) {
-          b.dead = true;
-          if (!p.rocketOn) p.hp -= b.damage;
-          for (let i = 0; i < 6; i++) addParticle(p.x, p.y, "#ff8f89", 2.4, 0.3);
+          if (d <= b.radius + p.r) {
+            b.dead = true;
+            if (!p.rocketOn) {
+              p.hp -= b.damage;
+              playSound('hit');
+            }
+            for (let i = 0; i < 6; i++) addParticle(p.x, p.y, "#ff8f89", 2.4, 0.3);
+          }
+          if (b.x < -40 || b.x > W + 40 || b.y < -40 || b.y > H + 40) b.dead = true;
         }
-        if (b.x < -40 || b.x > W + 40 || b.y < -40 || b.y > H + 40) b.dead = true;
-      }
-      state.enemyBullets = state.enemyBullets.filter(b => !b.dead);
+        state.enemyBullets = state.enemyBullets.filter(b => !b.dead);
+
+        // Check enemy bullets hitting minions
+        for (const b of state.enemyBullets) {
+          for (const m of state.minions) {
+            if (m.dead || m.hp === Infinity) continue;
+            const d = Math.hypot(b.x - m.x, b.y - m.y);
+            if (d <= b.radius + m.r) {
+              b.dead = true;
+              m.hp -= b.damage;
+              playSound('hit');
+              for (let i = 0; i < 4; i++) addParticle(m.x, m.y, "#8ce6ff", 2, 0.2);
+              if (m.hp <= 0) {
+                m.dead = true;
+                for (let i = 0; i < 8; i++) addParticle(m.x, m.y, "#56c4fa", 3, 0.4);
+              }
+            }
+          }
+        }
+      state.minions = state.minions.filter(m => !m.dead);
     }
 
     function updateParticles(dt) {
@@ -514,14 +886,7 @@
 
     function updateEconomy(dt) {
       state.survival += dt;
-      state.score += dt;
-      state.coinTick += dt;
-      if (state.coinTick >= 30) {
-        const add = Math.floor(state.coinTick / 30);
-        state.coinTick -= add * 30;
-        state.coins += add;
-        setMessage(`生存奖励：坚持30秒，获得${add}金币。`);
-      }
+      // 移除经济系统，无需处理金币和积分
     }
 
     function drawGround() {
@@ -542,6 +907,14 @@
         ctx.lineTo(W, y);
         ctx.stroke();
       }
+      
+      // 绘制基地框框
+      ctx.strokeStyle = "rgba(52, 152, 219, 0.3)";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 5]);
+      ctx.strokeRect(baseBox.x, baseBox.y, baseBox.w, baseBox.h);
+      ctx.setLineDash([]);
+      
       for (const o of state.obstacles) {
         ctx.fillStyle = "rgba(80, 100, 92, 0.95)";
         ctx.fillRect(o.x, o.y, o.w, o.h);
@@ -572,6 +945,21 @@
         ctx.strokeStyle = "#ffaea8";
         ctx.lineWidth = 2;
         ctx.stroke();
+      }
+      for (const m of state.minions) {
+        ctx.beginPath();
+        ctx.arc(m.x, m.y, m.r, 0, Math.PI * 2);
+        ctx.fillStyle = "#3498db"; // Blue minion
+        ctx.fill();
+        ctx.strokeStyle = "#8ce6ff";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        
+        // Draw minion health bar
+        ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+        ctx.fillRect(m.x - 10, m.y - 18, 20, 4);
+        ctx.fillStyle = "#2ecc71";
+        ctx.fillRect(m.x - 10, m.y - 18, 20 * (m.hp / 40), 4);
       }
       const p = state.player;
       const angle = Math.atan2(mouse.y - p.y, mouse.x - p.x);
@@ -611,21 +999,33 @@
       last = now;
       if (state.running) {
         updatePlayer(dt);
+        updateMinions(dt);
         updateEnemies(dt);
         updateBullets(dt);
         updateParticles(dt);
         updateEconomy(dt);
+        // Dynamic spawning based on minion count
+        // Enemy count must be at least minion count + 1
+        const targetEnemyCount = Math.max(state.minions.length + 1, 5); // Ensure there are always at least 5 enemies
+        
         state.enemySpawnTimer -= dt;
         if (state.enemySpawnTimer <= 0) {
-          state.enemySpawnTimer = Math.max(0.45, 1.5 - state.survival * 0.013);
-          spawnEnemy();
+          state.enemySpawnTimer = 0.5; // check frequently
+          if (state.enemies.length < targetEnemyCount) {
+            spawnEnemy();
+          }
         }
         state.enemies = state.enemies.filter(e => !e.dead);
+
+        // Handle cooldowns
+        if (state.nukeCooldown > 0) state.nukeCooldown -= dt;
+        if (state.hBombCooldown > 0) state.hBombCooldown -= dt;
+
         if (state.player.hp <= 0) stopGame();
         if (state.messageTimer > 0) {
           state.messageTimer -= dt;
         } else if (state.running) {
-          msgLine.textContent = "提示：Q是弹簧位移，空格是短冲刺。";
+          msgLine.textContent = "提示：Q是弹簧位移，空格冲刺，P切换自动开火，B免费召唤小兵。";
         }
         updateHud();
       }

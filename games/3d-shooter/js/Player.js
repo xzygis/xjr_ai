@@ -17,8 +17,8 @@ export class Player {
         this.direction = new THREE.Vector3();
         this.raycaster = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(0, -1, 0), 0, 10);
         
-        // Start position
-        this.controls.getObject().position.y = 10;
+        // Start position (Home base)
+        this.controls.getObject().position.set(-800, 10, -800);
         
         // Player properties
         this.speed = 400.0;
@@ -115,6 +115,9 @@ export class Player {
             this.canJump = true;
         }
         
+        // Ensure camera never rolls over
+        this.camera.rotation.z = 0;
+        
         // World bounds
         if (pos.x > 1000) pos.x = 1000;
         if (pos.x < -1000) pos.x = -1000;
@@ -138,10 +141,18 @@ export class Player {
     }
 
     die() {
-        // Respawn or game over logic
-        this.controls.getObject().position.set(0, 10, 0);
+        // Respawn in home base (a specific location, e.g., corner of the map)
+        this.controls.getObject().position.set(-800, 10, -800);
         this.health = 100;
         this.updateHealthUI();
+        
+        // Show message
+        const msg = document.getElementById('message');
+        if (msg) {
+            msg.innerText = "你在家里复活了 (Respawned at Home Base)";
+            msg.style.opacity = 1;
+            setTimeout(() => msg.style.opacity = 0, 3000);
+        }
     }
 
     updateHealthUI() {

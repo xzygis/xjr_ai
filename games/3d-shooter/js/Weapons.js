@@ -179,10 +179,29 @@ export class Weapons {
 
         if (intersects.length > 0 && intersects[0].distance <= w.range) {
             endPoint = intersects[0].point;
-            this.showHitMarker();
             
-            // Create a small explosion/spark at hit point
-            this.createHitSpark(endPoint);
+            const hit = intersects[0];
+            let hitObj = hit.object;
+            let isBot = false;
+            let botInstance = null;
+            
+            // Check if we hit a bot (traversing up in case we hit a nested mesh)
+            while (hitObj) {
+                if (hitObj.userData && hitObj.userData.isBot) {
+                    isBot = true;
+                    botInstance = hitObj.userData.bot;
+                    break;
+                }
+                hitObj = hitObj.parent;
+            }
+            
+            if (isBot && botInstance) {
+                botInstance.takeDamage(w.damage);
+                this.showHitMarker();
+            } else {
+                // Create a small explosion/spark at hit point
+                this.createHitSpark(endPoint);
+            }
         }
 
         points.push(endPoint);

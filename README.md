@@ -11,9 +11,7 @@ xjr-ai/
 │  ├─ parkour-game/           # 无尽跑酷游戏
 │  ├─ battle-royale-shooter/  # 枪战吃鸡战场
 │  ├─ 3d-shooter/             # 3D 射击游戏
-│  ├─ racing/                 # 赛车狂飙
-│  ├─ 3d-circular-arena/      # 3D 环形竞技场
-│  └─ shooter-game/           # 经典射击游戏
+│  └─ racing/                 # 赛车狂飙
 ├─ .trae/
 │  └─ rules/
 │     └─ project_rules.md     # 项目开发规范
@@ -30,10 +28,6 @@ xjr-ai/
    - 玩法：车辆选择、追捕机制、天气变化、城市道路场景。
 4. **3D 射击游戏 (3d-shooter)**
    - 玩法：第一人称3D射击。
-5. **3D 环形竞技场 (3d-circular-arena)**
-   - 玩法：独特的环形竞技场射击对决。
-6. **经典射击 (shooter-game)**
-   - 玩法：复古风格的经典打怪射击游戏。
 
 ## 本地运行
 

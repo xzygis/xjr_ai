@@ -3,9 +3,11 @@ import { PointerLockControls } from 'three/addons/controls/PointerLockControls.j
 import { World } from './World.js';
 import { Player } from './Player.js';
 import { Weapons } from './Weapons.js';
+import { Bot } from './Bot.js';
 
 let camera, scene, renderer, controls;
 let world, player, weapons;
+let bots = [];
 let clock, lastTime;
 let ui;
 
@@ -66,6 +68,11 @@ function init() {
     weapons = new Weapons(scene, camera, controls, objects);
     
     player = new Player(camera, controls, objects, weapons);
+    
+    // Create some bots
+    for (let i = 0; i < 5; i++) {
+        bots.push(new Bot(scene, objects, player, Math.random() * 800 - 400, Math.random() * 800 - 400));
+    }
 
     raycaster = new THREE.Raycaster();
 
@@ -132,6 +139,11 @@ function animate() {
         player.update(delta);
         weapons.update(delta);
         world.update(delta, player.getPosition());
+        
+        // Update bots
+        for (const bot of bots) {
+            bot.update(delta);
+        }
     }
 
     renderer.render(scene, camera);
