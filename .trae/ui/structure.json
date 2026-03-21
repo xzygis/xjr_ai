@@ -1,0 +1,30 @@
+{
+  "pages": [
+    {
+      "page_id": "battle_royale_shooter",
+      "page_name": "枪战吃鸡战场",
+      "page_description": "生存枪战地图，含金币积分商店与机动装备系统",
+      "layout_type": "single_page",
+      "sections": [
+        {
+          "name": "battlefield",
+          "type": "content",
+          "components": ["battle_canvas", "hud", "shop_buttons", "start_panel"],
+          "responsive_behavior": "stack"
+        }
+      ],
+      "color_scheme": "dark",
+      "primary_actions": ["开始战斗", "购买装备", "持续生存"]
+    }
+  ],
+  "navigation": {
+    "type": "none",
+    "links_between_pages": []
+  },
+  "canvas_layout": {
+    "battle_royale_shooter": {
+      "width": 1280,
+      "height": 860
+    }
+  }
+}

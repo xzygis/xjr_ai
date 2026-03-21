@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Circular Shooter</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        #instructions {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            color: white; text-align: center;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 30px; border-radius: 10px;
+            cursor: pointer;
+        }
+        #ui {
+            position: absolute; bottom: 20px; left: 20px; color: white;
+            font-size: 20px; text-shadow: 2px 2px 2px #000;
+            display: none; pointer-events: none;
+        }
+        #crosshair {
+            position: absolute; top: 50%; left: 50%; width: 20px; height: 20px;
+            transform: translate(-50%, -50%); pointer-events: none; display: none;
+        }
+        .crosshair-line { position: absolute; background: white; }
+        #crosshair .h { width: 100%; height: 2px; top: 9px; left: 0; }
+        #crosshair .v { width: 2px; height: 100%; top: 0; left: 9px; }
+        
+        #score-board {
+            position: absolute; top: 20px; right: 20px; color: white;
+            font-size: 24px; text-shadow: 2px 2px 2px #000;
+            display: none; pointer-events: none;
+        }
+        #hit-marker {
+            position: absolute; top: 50%; left: 50%; width: 30px; height: 30px;
+            transform: translate(-50%, -50%) rotate(45deg);
+            pointer-events: none; opacity: 0; transition: opacity 0.1s;
+        }
+        .hit-line { position: absolute; background: red; }
+        #hit-marker .h { width: 100%; height: 2px; top: 14px; left: 0; }
+        #hit-marker .v { width: 2px; height: 100%; top: 0; left: 14px; }
+    </style>
+</head>
+<body>
+    <div id="instructions">
+        <h1 style="font-size: 40px; margin-bottom: 10px;">3D Circular Shooter</h1>
+        <p style="font-size: 18px;">Click to Play</p>
+        <div style="text-align: left; margin-top: 20px;">
+            <p>W, A, S, D = Move</p>
+            <p>Mouse = Look / Shoot</p>
+            <p>1, 2, 3, 4 = Switch Weapons</p>
+            <p>Right Click = Zoom (Sniper)</p>
+            <p>Find the Green Box in the center for Infinite Ammo</p>
+        </div>
+    </div>
+    
+    <div id="crosshair">
+        <div class="crosshair-line h"></div>
+        <div class="crosshair-line v"></div>
+    </div>
+    
+    <div id="hit-marker">
+        <div class="hit-line h"></div>
+        <div class="hit-line v"></div>
+    </div>
+
+    <div id="ui">
+        <div>HP: <span id="hp">100</span></div>
+        <div>Weapon: <span id="weapon-name">Assault Rifle</span></div>
+        <div>Ammo: <span id="ammo">30 / 120</span></div>
+    </div>
+    
+    <div id="score-board">
+        Score: <span id="score">0</span>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小游戏中心</title>
+    <style>
+        :root {
+            --primary-color: #4CAF50;
+            --secondary-color: #45a049;
+            --bg-color: #f4f7f6;
+            --card-bg: #ffffff;
+            --text-color: #333333;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+
+        header {
+            background-color: var(--primary-color);
+            color: white;
+            text-align: center;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        p.subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .game-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 2rem;
+            padding-bottom: 3rem;
+        }
+
+        .game-card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+            display: flex;
+            flex-direction: column;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .game-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .game-icon {
+            height: 160px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 4rem;
+            color: white;
+        }
+
+        .game-info {
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+        }
+
+        .game-title {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+            color: #2c3e50;
+        }
+
+        .game-desc {
+            color: #7f8c8d;
+            margin-bottom: 1.5rem;
+            flex-grow: 1;
+        }
+
+        .play-btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 0.8rem;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: var(--transition);
+            text-align: center;
+            width: 100%;
+        }
+
+        .game-card:hover .play-btn {
+            background-color: var(--secondary-color);
+        }
+
+        /* 游戏特定的图标背景色 */
+        .icon-parkour { background: linear-gradient(135deg, #3498db, #2980b9); }
+        .icon-shooter { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+        .icon-racing { background: linear-gradient(135deg, #f1c40f, #f39c12); }
+        .icon-3d { background: linear-gradient(135deg, #9b59b6, #8e44ad); }
+        .icon-battle { background: linear-gradient(135deg, #1abc9c, #16a085); }
+        
+        footer {
+            text-align: center;
+            padding: 2rem;
+            color: #7f8c8d;
+            border-top: 1px solid #ddd;
+            margin-top: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🎮 小游戏中心</h1>
+        <p class="subtitle">选择你喜欢的游戏开始游玩吧！</p>
+    </header>
+
+    <div class="container">
+        <div class="game-grid">
+            <!-- 跑酷游戏 -->
+            <a href="games/parkour-game/index.html" class="game-card">
+                <div class="game-icon icon-parkour">🏃</div>
+                <div class="game-info">
+                    <h2 class="game-title">无尽跑酷</h2>
+                    <p class="game-desc">经典的方块跑酷游戏。按空格跳跃，长按可以飞行！注意躲避障碍物。</p>
+                    <div class="play-btn">开始游玩</div>
+                </div>
+            </a>
+
+            <!-- 枪战吃鸡战场 -->
+            <a href="games/battle-royale-shooter/index.html" class="game-card">
+                <div class="game-icon icon-battle">🔫</div>
+                <div class="game-info">
+                    <h2 class="game-title">枪战吃鸡战场</h2>
+                    <p class="game-desc">上帝视角射击游戏。收集金币购买装备，在这个残酷的战场上活下去！</p>
+                    <div class="play-btn">开始游玩</div>
+                </div>
+            </a>
+
+            <!-- 3D 射击游戏 -->
+            <a href="games/3d-shooter/index.html" class="game-card">
+                <div class="game-icon icon-3d">🎯</div>
+                <div class="game-info">
+                    <h2 class="game-title">3D 射击游戏</h2>
+                    <p class="game-desc">第一人称3D射击游戏。体验立体的战斗快感。</p>
+                    <div class="play-btn">开始游玩</div>
+                </div>
+            </a>
+
+            <!-- 赛车游戏 -->
+            <a href="games/racing/index.html" class="game-card">
+                <div class="game-icon icon-racing">🏎️</div>
+                <div class="game-info">
+                    <h2 class="game-title">赛车狂飙</h2>
+                    <p class="game-desc">极速赛车体验，驾驶你的跑车在赛道上驰骋。</p>
+                    <div class="play-btn">开始游玩</div>
+                </div>
+            </a>
+
+            <!-- 圆形竞技场射击 -->
+            <a href="games/3d-circular-arena/index.html" class="game-card">
+                <div class="game-icon icon-3d">🏟️</div>
+                <div class="game-info">
+                    <h2 class="game-title">3D 环形竞技场</h2>
+                    <p class="game-desc">在独特的环形竞技场中与敌人展开激烈的射击对决。</p>
+                    <div class="play-btn">开始游玩</div>
+                </div>
+            </a>
+
+            <!-- 基础射击游戏 -->
+            <a href="games/shooter-game/index.html" class="game-card">
+                <div class="game-icon icon-shooter">👾</div>
+                <div class="game-info">
+                    <h2 class="game-title">经典射击</h2>
+                    <p class="game-desc">复古风格的经典射击游戏，消灭所有来犯的敌人。</p>
+                    <div class="play-btn">开始游玩</div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <footer>
+        <p>游戏中心 &copy; 2024 - 所有的游戏均存放在 games/ 目录下</p>
+    </footer>
+</body>
+</html>

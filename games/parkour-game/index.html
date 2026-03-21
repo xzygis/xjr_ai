@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>无尽跑酷游戏</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="game-container">
+        <canvas id="gameCanvas" width="800" height="400"></canvas>
+        <div id="ui-layer">
+            <div id="score-board">分数: <span id="score">0</span></div>
+            <div id="high-score-board">最高分: <span id="high-score">0</span></div>
+            
+            <div id="fly-meter-container">
+                <div id="fly-meter-fill"></div>
+            </div>
+            
+            <div id="start-screen" class="screen active">
+                <h1>方块跑酷</h1>
+                <p>按 <strong>空格键</strong> 或 <strong>上箭头</strong> 跳跃</p>
+                <p><strong>长按跳跃键</strong> 可以飞行 (最多30秒)</p>
+                <p>按 <strong>下箭头</strong> 快速下落</p>
+                <button id="start-btn">开始游戏</button>
+            </div>
+            
+            <div id="game-over-screen" class="screen">
+                <h2>游戏结束</h2>
+                <p>最终分数: <span id="final-score">0</span></p>
+                <button id="restart-btn">重新开始</button>
+            </div>
+        </div>
+    </div>
+    <script src="game.js"></script>
+</body>
+</html>

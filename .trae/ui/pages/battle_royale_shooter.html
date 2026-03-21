@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>枪战吃鸡战场设计页</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+</head>
+<body class="min-h-screen bg-gradient-to-br from-emerald-950 via-slate-950 to-zinc-950 text-emerald-50">
+  <main class="max-w-7xl mx-auto px-6 py-10">
+    <div class="rounded-3xl border border-emerald-600/40 bg-black/35 backdrop-blur p-8 shadow-2xl">
+      <header class="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 class="text-3xl font-black tracking-wide">枪战吃鸡战场</h1>
+          <p class="mt-2 text-emerald-200/80">生存计时、金币积分经济、弹簧/飞行装置/喷气背包/火箭四段机动系统</p>
+        </div>
+        <a href="../../../index.html" class="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-emerald-700 hover:bg-emerald-600 transition font-bold">
+          <i class="fa-solid fa-bolt"></i>
+          打开可玩版本
+        </a>
+      </header>
+      <section class="mt-8 grid lg:grid-cols-3 gap-6">
+        <article class="lg:col-span-2 rounded-2xl border border-emerald-700/40 bg-gradient-to-br from-emerald-900/35 to-cyan-900/20 p-4">
+          <div class="aspect-[16/9] rounded-xl border border-emerald-500/35 relative overflow-hidden bg-gradient-to-br from-emerald-900/60 to-slate-900/80">
+            <div class="absolute inset-0 bg-[linear-gradient(rgba(180,255,220,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(180,255,220,0.08)_1px,transparent_1px)] bg-[size:56px_56px]"></div>
+            <div class="absolute top-4 left-4 right-4 flex flex-wrap gap-2">
+              <span class="px-3 py-1 rounded bg-emerald-800/60 border border-emerald-400/30 text-xs font-semibold">生命100</span>
+              <span class="px-3 py-1 rounded bg-emerald-800/60 border border-emerald-400/30 text-xs font-semibold">积分200</span>
+              <span class="px-3 py-1 rounded bg-emerald-800/60 border border-emerald-400/30 text-xs font-semibold">金币30</span>
+            </div>
+            <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-9 w-9 rounded-full bg-emerald-300 shadow-[0_0_16px_rgba(52,211,153,0.8)]"></div>
+            <div class="absolute right-24 top-40 h-8 w-8 rounded-full bg-red-400/90"></div>
+            <div class="absolute left-20 bottom-16 h-20 w-36 rounded bg-zinc-600/75 border border-zinc-300/20"></div>
+          </div>
+        </article>
+        <article class="rounded-2xl border border-emerald-700/40 bg-zinc-950/55 p-5">
+          <h2 class="text-xl font-extrabold">机制摘要</h2>
+          <ul class="mt-4 space-y-3 text-emerald-100/90">
+            <li class="flex items-start gap-2"><i class="fa-solid fa-circle-check mt-1"></i><span>每坚持30秒自动获得1金币</span></li>
+            <li class="flex items-start gap-2"><i class="fa-solid fa-circle-check mt-1"></i><span>30金币：弹跳弹簧（一次位移）</span></li>
+            <li class="flex items-start gap-2"><i class="fa-solid fa-circle-check mt-1"></i><span>100金币：飞行装置（5秒）</span></li>
+            <li class="flex items-start gap-2"><i class="fa-solid fa-circle-check mt-1"></i><span>200积分：喷气背包（15秒）</span></li>
+            <li class="flex items-start gap-2"><i class="fa-solid fa-circle-check mt-1"></i><span>1000积分：火箭（可穿越障碍）</span></li>
+          </ul>
+        </article>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

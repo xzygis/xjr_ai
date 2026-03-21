@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>枪战吃鸡战场</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: radial-gradient(circle at top, #1f2f2d 0%, #121919 55%, #0b1010 100%);
+      color: #e8f6ef;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+    }
+    .game-shell {
+      width: min(1280px, 100%);
+      background: rgba(14, 24, 23, 0.82);
+      border: 1px solid rgba(105, 146, 127, 0.35);
+      border-radius: 16px;
+      box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45);
+      overflow: hidden;
+    }
+    .hud {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      padding: 12px 14px;
+      background: linear-gradient(90deg, rgba(34, 64, 54, 0.68), rgba(20, 44, 40, 0.72));
+      border-bottom: 1px solid rgba(106, 166, 136, 0.25);
+    }
+    .hud-left {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+    .chip {
+      padding: 6px 10px;
+      border-radius: 8px;
+      background: rgba(171, 219, 191, 0.12);
+      border: 1px solid rgba(172, 224, 192, 0.22);
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.2px;
+      white-space: nowrap;
+    }
+    .hud-right {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .buy-btn {
+      border: none;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+      color: #e6fff5;
+      background: linear-gradient(135deg, #1f7d60, #166349);
+      cursor: pointer;
+      transition: transform 0.12s ease, opacity 0.12s ease;
+    }
+    .buy-btn:hover { transform: translateY(-1px); }
+    .buy-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .stage {
+      position: relative;
+      display: grid;
+      place-items: center;
+      background: #111;
+    }
+    canvas {
+      display: block;
+      width: min(1280px, 100%);
+      aspect-ratio: 16 / 9;
+      background: radial-gradient(circle at 40% 30%, #2a483a, #1d342b 54%, #16261f 100%);
+    }
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+    .card {
+      width: min(560px, calc(100% - 40px));
+      padding: 20px;
+      border-radius: 14px;
+      background: rgba(11, 19, 18, 0.86);
+      border: 1px solid rgba(116, 179, 143, 0.3);
+      box-shadow: 0 14px 26px rgba(0, 0, 0, 0.4);
+      text-align: center;
+      pointer-events: auto;
+    }
+    .card h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+    }
+    .card p {
+      margin: 0 0 10px;
+      color: #b9d9cb;
+      font-size: 14px;
+      line-height: 1.55;
+    }
+    .card button {
+      margin-top: 8px;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 16px;
+      background: linear-gradient(135deg, #2fa17d, #228666);
+      color: white;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .tips {
+      padding: 10px 14px 14px;
+      font-size: 12px;
+      color: #9ac3b0;
+      background: rgba(16, 31, 27, 0.82);
+      border-top: 1px solid rgba(112, 171, 144, 0.18);
+    }
+  </style>
+</head>
+<body>
+  <main class="game-shell">
+    <section class="hud">
+      <div class="hud-left">
+        <div class="chip" id="hpChip">生命 100</div>
+        <div class="chip" id="scoreChip">积分 0</div>
+        <div class="chip" id="coinChip">金币 0</div>
+        <div class="chip" id="surviveChip">生存 0.0 秒</div>
+        <div class="chip" id="activeChip">状态 普通</div>
+      </div>
+      <div class="hud-right">
+        <button class="buy-btn" id="buySpring">30金币 弹跳弹簧</button>
+        <button class="buy-btn" id="buyFly">100金币 飞行装置(5秒)</button>
+        <button class="buy-btn" id="buyJet">200积分 喷气背包(15秒)</button>
+        <button class="buy-btn" id="buyRocket">1000积分 火箭穿障</button>
+      </div>
+    </section>
+    <section class="stage">
+      <canvas id="gameCanvas" width="1280" height="720"></canvas>
+      <div class="overlay" id="overlay">
+        <div class="card" id="panel">
+          <h1>枪战吃鸡战场</h1>
+          <p>WASD移动，鼠标瞄准射击，空格冲刺，Q触发弹跳弹簧。</p>
+          <p>坚持30秒获得1金币；30金币买弹簧；100金币买飞行装置5秒；200积分买喷气背包15秒；1000积分买火箭穿越障碍。</p>
+          <button id="startBtn">开始战斗</button>
+        </div>
+      </div>
+    </section>
+    <section class="tips" id="msgLine">提示：尽量沿掩体边缘移动，避免被集火。</section>
+  </main>
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const hpChip = document.getElementById("hpChip");
+    const scoreChip = document.getElementById("scoreChip");
+    const coinChip = document.getElementById("coinChip");
+    const surviveChip = document.getElementById("surviveChip");
+    const activeChip = document.getElementById("activeChip");
+    const msgLine = document.getElementById("msgLine");
+    const overlay = document.getElementById("overlay");
+    const panel = document.getElementById("panel");
+    const startBtn = document.getElementById("startBtn");
+    const buySpring = document.getElementById("buySpring");
+    const buyFly = document.getElementById("buyFly");
+    const buyJet = document.getElementById("buyJet");
+    const buyRocket = document.getElementById("buyRocket");
+
+    const W = 1280;
+    const H = 720;
+    const keys = {};
+    const mouse = { x: W / 2, y: H / 2, down: false };
+
+    const state = {
+      running: false,
+      player: null,
+      enemies: [],
+      bullets: [],
+      enemyBullets: [],
+      particles: [],
+      obstacles: [],
+      score: 0,
+      coins: 0,
+      springCharges: 0,
+      pendingFlyTime: 0,
+      pendingJetTime: 0,
+      rocketOwned: false,
+      survival: 0,
+      coinTick: 0,
+      enemySpawnTimer: 0,
+      messageTimer: 0
+    };
+
+    function renderHomePanel(title = "枪战吃鸡战场", subtitle = "WASD移动，鼠标瞄准射击，空格冲刺，Q触发弹跳弹簧。") {
+      overlay.style.display = "flex";
+      panel.innerHTML = `
+        <h1>${title}</h1>
+        <p>${subtitle}</p>
+        <p>当前资产：积分 ${Math.floor(state.score)} ｜ 金币 ${state.coins}</p>
+        <p>库存：弹簧×${state.springCharges} ｜ 预存飞行 ${state.pendingFlyTime.toFixed(0)}秒 ｜ 预存喷气 ${state.pendingJetTime.toFixed(0)}秒 ｜ 火箭 ${state.rocketOwned ? "已解锁(永久)" : "未解锁"}</p>
+        <button id="startBtn">开始战斗</button>
+      `;
+      document.getElementById("startBtn").addEventListener("click", resetGame);
+    }
+
+    function setMessage(text) {
+      msgLine.textContent = text;
+      state.messageTimer = 2.8;
+    }
+
+    function createObstacles() {
+      return [
+        { x: 250, y: 130, w: 150, h: 90 },
+        { x: 520, y: 84, w: 240, h: 72 },
+        { x: 860, y: 180, w: 170, h: 80 },
+        { x: 180, y: 340, w: 220, h: 74 },
+        { x: 500, y: 300, w: 220, h: 130 },
+        { x: 890, y: 360, w: 220, h: 80 },
+        { x: 290, y: 540, w: 200, h: 90 },
+        { x: 760, y: 560, w: 250, h: 80 }
+      ];
+    }
+
+    function resetGame() {
+      state.running = true;
+      state.player = {
+        x: W / 2,
+        y: H / 2,
+        r: 16,
+        speed: 240,
+        hp: 100,
+        shootCd: 0,
+        springCd: 0,
+        flyingTimer: state.pendingFlyTime,
+        jetpackTimer: state.pendingJetTime,
+        rocketOn: state.rocketOwned
+      };
+      state.pendingFlyTime = 0;
+      state.pendingJetTime = 0;
+      state.enemies = [];
+      state.bullets = [];
+      state.enemyBullets = [];
+      state.particles = [];
+      state.obstacles = createObstacles();
+      state.survival = 0;
+      state.coinTick = 0;
+      state.enemySpawnTimer = 0.8;
+      state.messageTimer = 0;
+      overlay.style.display = "none";
+      updateHud();
+      setMessage("战斗开始：每生存1秒获得1积分，每30秒获得1金币。");
+    }
+
+    function stopGame() {
+      state.running = false;
+      renderHomePanel("你被淘汰了", `本局生存 ${state.survival.toFixed(1)} 秒。你已返回主页，可继续购买后再开局。`);
+    }
+
+    function addParticle(x, y, color, size = 2, life = 0.4) {
+      state.particles.push({
+        x, y, color, size, life,
+        vx: (Math.random() - 0.5) * 160,
+        vy: (Math.random() - 0.5) * 160
+      });
+    }
+
+    function spawnEnemy() {
+      const side = Math.floor(Math.random() * 4);
+      let x = 0;
+      let y = 0;
+      if (side === 0) { x = -30; y = Math.random() * H; }
+      if (side === 1) { x = W + 30; y = Math.random() * H; }
+      if (side === 2) { x = Math.random() * W; y = -30; }
+      if (side === 3) { x = Math.random() * W; y = H + 30; }
+      state.enemies.push({
+        x, y, r: 15, hp: 60, speed: 120 + Math.random() * 35, fireCd: 0.5 + Math.random() * 0.9
+      });
+    }
+
+    function isInsideObstacle(x, y, r = 0) {
+      for (const o of state.obstacles) {
+        const nearX = Math.max(o.x, Math.min(x, o.x + o.w));
+        const nearY = Math.max(o.y, Math.min(y, o.y + o.h));
+        const dx = x - nearX;
+        const dy = y - nearY;
+        if (dx * dx + dy * dy <= r * r) return true;
+      }
+      return false;
+    }
+
+    function moveWithObstacle(entity, nx, ny, canPhase) {
+      if (canPhase) {
+        entity.x = nx;
+        entity.y = ny;
+        return;
+      }
+      if (!isInsideObstacle(nx, entity.y, entity.r)) entity.x = nx;
+      if (!isInsideObstacle(entity.x, ny, entity.r)) entity.y = ny;
+    }
+
+    function canPlayerPhase() {
+      return state.player.flyingTimer > 0 || state.player.jetpackTimer > 0 || state.player.rocketOn;
+    }
+
+    function buySpringAction() {
+      if (state.coins < 30) return setMessage("金币不足：弹跳弹簧需要30金币。");
+      state.coins -= 30;
+      state.springCharges += 1;
+      updateHud();
+      setMessage("购买成功：获得1次弹跳弹簧（按Q触发）。");
+    }
+
+    function buyFlyAction() {
+      if (state.coins < 100) return setMessage("金币不足：飞行装置需要100金币。");
+      state.coins -= 100;
+      if (state.running) state.player.flyingTimer = Math.max(state.player.flyingTimer, 5);
+      else state.pendingFlyTime += 5;
+      updateHud();
+      setMessage("飞行装置已购买：可飞行5秒。");
+    }
+
+    function buyJetAction() {
+      if (state.score < 200) return setMessage("积分不足：喷气背包需要200积分。");
+      state.score -= 200;
+      if (state.running) state.player.jetpackTimer = Math.max(state.player.jetpackTimer, 15);
+      else state.pendingJetTime += 15;
+      updateHud();
+      setMessage("喷气背包已购买：可持续15秒。");
+    }
+
+    function buyRocketAction() {
+      if (state.rocketOwned) return setMessage("火箭已解锁：可永久飞行穿障。");
+      if (state.score < 1000) return setMessage("积分不足：火箭需要1000积分。");
+      state.score -= 1000;
+      state.rocketOwned = true;
+      if (state.running) state.player.rocketOn = true;
+      updateHud();
+      setMessage("火箭解锁成功：永久飞行并穿越障碍。");
+    }
+
+    function updateHud() {
+      const p = state.player;
+      hpChip.textContent = `生命 ${p ? Math.max(0, Math.ceil(p.hp)) : 100}`;
+      scoreChip.textContent = `积分 ${Math.floor(state.score)}`;
+      coinChip.textContent = `金币 ${state.coins}`;
+      surviveChip.textContent = `生存 ${state.survival.toFixed(1)} 秒`;
+      let status = "普通";
+      if (state.rocketOwned || (p && p.rocketOn)) status = "火箭永久";
+      else if (p && p.jetpackTimer > 0) status = `喷气背包 ${p.jetpackTimer.toFixed(1)}s`;
+      else if (p && p.flyingTimer > 0) status = `飞行装置 ${p.flyingTimer.toFixed(1)}s`;
+      else if (state.springCharges > 0) status = `弹簧×${state.springCharges}`;
+      activeChip.textContent = `状态 ${status}`;
+      buySpring.disabled = state.coins < 30;
+      buyFly.disabled = state.coins < 100;
+      buyJet.disabled = state.score < 200;
+      buyRocket.disabled = state.rocketOwned || state.score < 1000;
+      buyRocket.textContent = state.rocketOwned ? "火箭 已解锁" : "1000积分 火箭穿障";
+    }
+
+    function firePlayerBullet() {
+      const p = state.player;
+      if (p.shootCd > 0) return;
+      const angle = Math.atan2(mouse.y - p.y, mouse.x - p.x);
+      const speed = p.rocketOn ? 740 : 610;
+      const damage = p.rocketOn ? 48 : 24;
+      const radius = p.rocketOn ? 5 : 4;
+      p.shootCd = p.rocketOn ? 0.09 : 0.16;
+      state.bullets.push({
+        x: p.x + Math.cos(angle) * 22,
+        y: p.y + Math.sin(angle) * 22,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        damage,
+        radius,
+        phase: p.rocketOn
+      });
+      for (let i = 0; i < 4; i++) addParticle(p.x, p.y, p.rocketOn ? "#ffa733" : "#9be7d0", 2.2, 0.24);
+    }
+
+    function activateSpring() {
+      const p = state.player;
+      if (state.springCharges < 1 || p.springCd > 0) return;
+      state.springCharges -= 1;
+      p.springCd = 0.85;
+      const angle = Math.atan2(mouse.y - p.y, mouse.x - p.x);
+      p.x += Math.cos(angle) * 220;
+      p.y += Math.sin(angle) * 220;
+      p.x = Math.max(p.r, Math.min(W - p.r, p.x));
+      p.y = Math.max(p.r, Math.min(H - p.r, p.y));
+      for (let i = 0; i < 16; i++) addParticle(p.x, p.y, "#b4ff4f", 2.6, 0.5);
+      setMessage("弹跳触发：快速位移完成。");
+    }
+
+    function updatePlayer(dt) {
+      const p = state.player;
+      let dx = 0;
+      let dy = 0;
+      if (keys["w"]) dy -= 1;
+      if (keys["s"]) dy += 1;
+      if (keys["a"]) dx -= 1;
+      if (keys["d"]) dx += 1;
+      const len = Math.hypot(dx, dy) || 1;
+      dx /= len;
+      dy /= len;
+
+      const speedMul = p.jetpackTimer > 0 ? 1.65 : p.flyingTimer > 0 ? 1.3 : 1;
+      const nx = p.x + dx * p.speed * speedMul * dt;
+      const ny = p.y + dy * p.speed * speedMul * dt;
+      moveWithObstacle(p, nx, ny, canPlayerPhase());
+
+      p.x = Math.max(p.r, Math.min(W - p.r, p.x));
+      p.y = Math.max(p.r, Math.min(H - p.r, p.y));
+
+      p.shootCd = Math.max(0, p.shootCd - dt);
+      p.springCd = Math.max(0, p.springCd - dt);
+      p.flyingTimer = Math.max(0, p.flyingTimer - dt);
+      p.jetpackTimer = Math.max(0, p.jetpackTimer - dt);
+
+      if (mouse.down) firePlayerBullet();
+      if (keys[" "]) {
+        const angle = Math.atan2(mouse.y - p.y, mouse.x - p.x);
+        p.x += Math.cos(angle) * 180 * dt;
+        p.y += Math.sin(angle) * 180 * dt;
+      }
+      if (keys["q"]) {
+        keys["q"] = false;
+        activateSpring();
+      }
+    }
+
+    function updateEnemies(dt) {
+      const p = state.player;
+      for (const e of state.enemies) {
+        const angle = Math.atan2(p.y - e.y, p.x - e.x);
+        const nx = e.x + Math.cos(angle) * e.speed * dt;
+        const ny = e.y + Math.sin(angle) * e.speed * dt;
+        moveWithObstacle(e, nx, ny, false);
+        e.fireCd -= dt;
+        if (e.fireCd <= 0) {
+          e.fireCd = 1.15 + Math.random() * 0.85;
+          const spread = (Math.random() - 0.5) * 0.26;
+          const a = angle + spread;
+          state.enemyBullets.push({
+            x: e.x,
+            y: e.y,
+            vx: Math.cos(a) * 330,
+            vy: Math.sin(a) * 330,
+            damage: 12,
+            radius: 4
+          });
+        }
+      }
+    }
+
+    function updateBullets(dt) {
+      const p = state.player;
+      for (const b of state.bullets) {
+        b.x += b.vx * dt;
+        b.y += b.vy * dt;
+        if (!b.phase && isInsideObstacle(b.x, b.y, b.radius)) b.dead = true;
+        for (const e of state.enemies) {
+          if (e.dead) continue;
+          const d = Math.hypot(b.x - e.x, b.y - e.y);
+          if (d <= b.radius + e.r) {
+            e.hp -= b.damage;
+            if (!b.phase) b.dead = true;
+            addParticle(e.x, e.y, "#ff7b74", 3, 0.35);
+            if (e.hp <= 0) {
+              e.dead = true;
+              state.score += 120;
+              state.coins += Math.random() < 0.22 ? 1 : 0;
+              for (let i = 0; i < 12; i++) addParticle(e.x, e.y, "#ffc26e", 3, 0.6);
+            }
+          }
+        }
+        if (b.x < -40 || b.x > W + 40 || b.y < -40 || b.y > H + 40) b.dead = true;
+      }
+      state.bullets = state.bullets.filter(b => !b.dead);
+
+      for (const b of state.enemyBullets) {
+        b.x += b.vx * dt;
+        b.y += b.vy * dt;
+        if (isInsideObstacle(b.x, b.y, b.radius) && !canPlayerPhase()) b.dead = true;
+        const d = Math.hypot(b.x - p.x, b.y - p.y);
+        if (d <= b.radius + p.r) {
+          b.dead = true;
+          if (!p.rocketOn) p.hp -= b.damage;
+          for (let i = 0; i < 6; i++) addParticle(p.x, p.y, "#ff8f89", 2.4, 0.3);
+        }
+        if (b.x < -40 || b.x > W + 40 || b.y < -40 || b.y > H + 40) b.dead = true;
+      }
+      state.enemyBullets = state.enemyBullets.filter(b => !b.dead);
+    }
+
+    function updateParticles(dt) {
+      for (const p of state.particles) {
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.life -= dt;
+      }
+      state.particles = state.particles.filter(p => p.life > 0);
+    }
+
+    function updateEconomy(dt) {
+      state.survival += dt;
+      state.score += dt;
+      state.coinTick += dt;
+      if (state.coinTick >= 30) {
+        const add = Math.floor(state.coinTick / 30);
+        state.coinTick -= add * 30;
+        state.coins += add;
+        setMessage(`生存奖励：坚持30秒，获得${add}金币。`);
+      }
+    }
+
+    function drawGround() {
+      ctx.clearRect(0, 0, W, H);
+      for (let x = 0; x < W; x += 64) {
+        ctx.strokeStyle = "rgba(146, 195, 166, 0.08)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, H);
+        ctx.stroke();
+      }
+      for (let y = 0; y < H; y += 64) {
+        ctx.strokeStyle = "rgba(146, 195, 166, 0.08)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(W, y);
+        ctx.stroke();
+      }
+      for (const o of state.obstacles) {
+        ctx.fillStyle = "rgba(80, 100, 92, 0.95)";
+        ctx.fillRect(o.x, o.y, o.w, o.h);
+        ctx.strokeStyle = "rgba(184, 223, 202, 0.32)";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(o.x, o.y, o.w, o.h);
+      }
+    }
+
+    function drawEntities() {
+      for (const b of state.bullets) {
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+        ctx.fillStyle = b.phase ? "#ffb449" : "#8ff6dd";
+        ctx.fill();
+      }
+      for (const b of state.enemyBullets) {
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+        ctx.fillStyle = "#ff6d66";
+        ctx.fill();
+      }
+      for (const e of state.enemies) {
+        ctx.beginPath();
+        ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2);
+        ctx.fillStyle = "#d45d5d";
+        ctx.fill();
+        ctx.strokeStyle = "#ffaea8";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+      const p = state.player;
+      const angle = Math.atan2(mouse.y - p.y, mouse.x - p.x);
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(angle);
+      ctx.beginPath();
+      ctx.arc(0, 0, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = p.rocketOn ? "#f09d3f" : p.jetpackTimer > 0 ? "#56c4fa" : p.flyingTimer > 0 ? "#8ce6ff" : "#50e0a6";
+      ctx.fill();
+      ctx.beginPath();
+      ctx.rect(0, -4, 22, 8);
+      ctx.fillStyle = "#d6e8e0";
+      ctx.fill();
+      ctx.restore();
+
+      if (p.flyingTimer > 0 || p.jetpackTimer > 0 || p.rocketOn) {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r + 7 + Math.sin(performance.now() / 120) * 2, 0, Math.PI * 2);
+        ctx.strokeStyle = p.rocketOn ? "rgba(255,157,70,0.7)" : "rgba(124,227,255,0.6)";
+        ctx.lineWidth = 3;
+        ctx.stroke();
+      }
+      for (const t of state.particles) {
+        ctx.globalAlpha = Math.max(0, t.life * 1.9);
+        ctx.beginPath();
+        ctx.arc(t.x, t.y, t.size, 0, Math.PI * 2);
+        ctx.fillStyle = t.color;
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    let last = performance.now();
+    function loop(now) {
+      const dt = Math.min(0.033, (now - last) / 1000);
+      last = now;
+      if (state.running) {
+        updatePlayer(dt);
+        updateEnemies(dt);
+        updateBullets(dt);
+        updateParticles(dt);
+        updateEconomy(dt);
+        state.enemySpawnTimer -= dt;
+        if (state.enemySpawnTimer <= 0) {
+          state.enemySpawnTimer = Math.max(0.45, 1.5 - state.survival * 0.013);
+          spawnEnemy();
+        }
+        state.enemies = state.enemies.filter(e => !e.dead);
+        if (state.player.hp <= 0) stopGame();
+        if (state.messageTimer > 0) {
+          state.messageTimer -= dt;
+        } else if (state.running) {
+          msgLine.textContent = "提示：Q是弹簧位移，空格是短冲刺。";
+        }
+        updateHud();
+      }
+      drawGround();
+      if (state.player) drawEntities();
+      requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+
+    window.addEventListener("keydown", e => {
+      keys[e.key.toLowerCase()] = true;
+      if (e.key === " ") e.preventDefault();
+    });
+    window.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
+    canvas.addEventListener("mousemove", e => {
+      const rect = canvas.getBoundingClientRect();
+      mouse.x = (e.clientX - rect.left) * (canvas.width / rect.width);
+      mouse.y = (e.clientY - rect.top) * (canvas.height / rect.height);
+    });
+    canvas.addEventListener("mousedown", () => mouse.down = true);
+    window.addEventListener("mouseup", () => mouse.down = false);
+
+    startBtn.addEventListener("click", resetGame);
+    buySpring.addEventListener("click", buySpringAction);
+    buyFly.addEventListener("click", buyFlyAction);
+    buyJet.addEventListener("click", buyJetAction);
+    buyRocket.addEventListener("click", buyRocketAction);
+    renderHomePanel();
+    updateHud();
+  </script>
+</body>
+</html>

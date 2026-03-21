@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>末日突围 - 枪战游戏</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        <div id="ui-layer">
+            <div class="top-bar">
+                <div class="stats">
+                    <div class="health-bar-container">
+                        <div id="health-bar"></div>
+                        <div id="shield-bar"></div>
+                    </div>
+                    <div id="health-text">HP: 100</div>
+                    <div id="armor-status"></div>
+                </div>
+                <div class="score-board">
+                    击杀: <span id="score">0</span>
+                </div>
+            </div>
+            
+            <div class="bottom-bar">
+                <div class="weapon-info">
+                    <div id="current-weapon-name">手枪</div>
+                    <div id="ammo-count">∞ / ∞</div>
+                </div>
+                <div class="weapon-slots">
+                    <div class="slot active" id="slot-1">1: 手枪</div>
+                    <div class="slot" id="slot-2">2: 冲锋枪</div>
+                    <div class="slot" id="slot-3">3: 突击步枪</div>
+                    <div class="slot" id="slot-4">4: 狙击枪</div>
+                </div>
+                <div id="buff-container"></div>
+            </div>
+
+            <div id="game-over-screen" class="hidden">
+                <h1>游戏结束</h1>
+                <p>最终击杀: <span id="final-score">0</span></p>
+                <button id="restart-btn">重新开始</button>
+            </div>
+            <div id="start-screen">
+                <h1>末日突围</h1>
+                <p>WASD 移动，鼠标瞄准射击，数字键 1-4 切换武器</p>
+                <button id="start-btn">开始游戏</button>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
