@@ -6,19 +6,20 @@
     <title>小游戏中心</title>
     <style>
         :root {
-            --primary-color: #4CAF50;
-            --secondary-color: #45a049;
+            --primary-color: #2E7D32;
+            --secondary-color: #1B5E20;
             --bg-color: #f4f7f6;
             --card-bg: #ffffff;
             --text-color: #333333;
-            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            --transition: all 0.3s ease;
+            --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
         }
 
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
         }
 
         body {
@@ -26,6 +27,9 @@
             background-color: var(--bg-color);
             color: var(--text-color);
             line-height: 1.6;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
         }
 
         header {
@@ -38,31 +42,44 @@
         }
 
         h1 {
-            font-size: 2.5rem;
+            font-size: 2.2rem;
             margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            font-weight: 700;
         }
 
         p.subtitle {
-            font-size: 1.1rem;
-            opacity: 0.9;
+            font-size: 1.05rem;
+            opacity: 0.95;
+            font-weight: 400;
         }
 
         .container {
             max-width: 1200px;
             margin: 0 auto;
             padding: 0 20px;
+            flex-grow: 1;
         }
 
         .game-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 2rem;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2.5rem;
             padding-bottom: 3rem;
+        }
+
+        @media (max-width: 1024px) {
+            .game-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
         }
 
         .game-card {
             background-color: var(--card-bg);
-            border-radius: 12px;
+            border-radius: 16px;
             overflow: hidden;
             box-shadow: var(--shadow);
             transition: var(--transition);
@@ -70,20 +87,26 @@
             flex-direction: column;
             text-decoration: none;
             color: inherit;
+            border: 1px solid rgba(0,0,0,0.05);
         }
 
         .game-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+            transform: translateY(-8px);
+            box-shadow: 0 16px 32px rgba(0, 0, 0, 0.12);
         }
 
         .game-icon {
-            height: 160px;
+            height: 180px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 4rem;
+            font-size: 5rem;
             color: white;
+            transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+        
+        .game-card:hover .game-icon {
+            transform: scale(1.1);
         }
 
         .game-info {
@@ -94,15 +117,17 @@
         }
 
         .game-title {
-            font-size: 1.5rem;
+            font-size: 1.35rem;
             margin-bottom: 0.5rem;
-            color: #2c3e50;
+            color: #1e293b;
+            font-weight: 700;
         }
 
         .game-desc {
-            color: #7f8c8d;
+            color: #64748b;
             margin-bottom: 1.5rem;
             flex-grow: 1;
+            font-size: 0.9rem;
         }
 
         .play-btn {
@@ -110,38 +135,55 @@
             color: white;
             border: none;
             padding: 0.8rem;
-            border-radius: 6px;
-            font-weight: bold;
+            border-radius: 8px;
+            font-weight: 600;
             font-size: 1rem;
             cursor: pointer;
             transition: var(--transition);
             text-align: center;
             width: 100%;
+            margin-top: auto;
         }
 
         .game-card:hover .play-btn {
             background-color: var(--secondary-color);
         }
 
-        /* 游戏特定的图标背景色 */
-        .icon-parkour { background: linear-gradient(135deg, #3498db, #2980b9); }
-        .icon-shooter { background: linear-gradient(135deg, #e74c3c, #c0392b); }
-        .icon-racing { background: linear-gradient(135deg, #f1c40f, #f39c12); }
-        .icon-3d { background: linear-gradient(135deg, #9b59b6, #8e44ad); }
-        .icon-battle { background: linear-gradient(135deg, #1abc9c, #16a085); }
+            /* 游戏特定的图标背景色 */
+        .icon-battle { background: linear-gradient(135deg, #10b981, #0ea5e9); }
+        .icon-parkour { background: linear-gradient(135deg, #2563eb, #60a5fa); }
+        .icon-racing { background: linear-gradient(135deg, #f59e0b, #fbbf24); }
         
         footer {
             text-align: center;
-            padding: 2rem;
-            color: #7f8c8d;
+            padding: 1.5rem;
+            color: #9ca3af;
             border-top: 1px solid #ddd;
-            margin-top: 2rem;
+            margin-top: auto;
+            background-color: var(--card-bg);
+            font-size: 0.9rem;
+        }
+        @media (max-width: 768px) {
+            .game-grid {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+                padding-bottom: 2rem;
+            }
+            h1 {
+                font-size: 1.8rem;
+            }
+            .game-icon {
+                height: 140px;
+            }
+            header {
+                padding: 1.5rem 0;
+            }
         }
     </style>
 </head>
 <body>
     <header>
-        <h1>🎮 小游戏中心</h1>
+        <h1><img src="https://api.iconify.design/noto:video-game.svg" alt="game controller" style="width: 40px; height: 40px; vertical-align: middle;"> 小游戏中心</h1>
         <p class="subtitle">选择你喜欢的游戏开始游玩吧！</p>
     </header>
 
@@ -149,38 +191,44 @@
         <div class="game-grid">
             <!-- 枪战吃鸡战场 -->
             <a href="games/battle-royale-shooter/index.html" class="game-card">
-                <div class="game-icon icon-battle">🔫</div>
+                <div class="game-icon icon-battle">
+                    <img src="https://api.iconify.design/noto:water-pistol.svg" alt="water pistol" style="width: 80px; height: 80px; filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.2));">
+                </div>
                 <div class="game-info">
                     <h2 class="game-title">枪战吃鸡战场</h2>
-                    <p class="game-desc">俯视角射击游戏，20人小队死守阵地！</p>
-                    <div class="play-btn">开始游玩</div>
+                    <p class="game-desc">俯视视角射击游戏，20人从天而降作战！</p>
+                    <div class="play-btn">开始游戏</div>
                 </div>
             </a>
 
             <!-- 跑酷游戏 -->
             <a href="games/parkour-game/index.html" class="game-card">
-                <div class="game-icon icon-parkour">🏃‍♂️</div>
+                <div class="game-icon icon-parkour">
+                    <img src="https://api.iconify.design/noto:person-running.svg" alt="running person" style="width: 80px; height: 80px; filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.2));">
+                </div>
                 <div class="game-info">
                     <h2 class="game-title">无尽跑酷</h2>
-                    <p class="game-desc">横版动作游戏，长按跳跃可短暂飞行！</p>
-                    <div class="play-btn">开始游玩</div>
+                    <p class="game-desc">横版跑酷游戏，长按跳跃可滑翔飞行！</p>
+                    <div class="play-btn">开始游戏</div>
                 </div>
             </a>
 
             <!-- 赛车游戏 -->
             <a href="games/racing/index.html" class="game-card">
-                <div class="game-icon icon-racing">🏎️</div>
+                <div class="game-icon icon-racing">
+                    <img src="https://api.iconify.design/noto:racing-car.svg" alt="racing car" style="width: 80px; height: 80px; filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.2));">
+                </div>
                 <div class="game-info">
                     <h2 class="game-title">赛车狂飙</h2>
-                    <p class="game-desc">极速赛车体验，驾驶你的跑车在赛道上驰骋。</p>
-                    <div class="play-btn">开始游玩</div>
+                    <p class="game-desc">极速赛车体验，驾驶你的赛车在赛道上驰骋。</p>
+                    <div class="play-btn">开始游戏</div>
                 </div>
             </a>
         </div>
     </div>
 
     <footer>
-        <p>游戏中心 &copy; 2024 - 所有的游戏均存放在 games/ 目录下</p>
+        <p>游戏中心 &copy; 2026</p>
     </footer>
 </body>
 </html>
