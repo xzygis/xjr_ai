@@ -10,7 +10,7 @@
       margin: 0;
       min-height: 100vh;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
-      background: radial-gradient(circle at top, #1f2f2d 0%, #121919 55%, #0b1010 100%);
+      background: radial-gradient(circle at top, #0d2b1f 0%, #081a13 55%, #040d0a 100%);
       color: #e8f6ef;
       display: flex;
       align-items: center;
@@ -27,7 +27,7 @@
     }
     .hud {
       display: grid;
-      grid-template-columns: 1fr auto;
+      grid-template-columns: 1fr;
       gap: 12px;
       padding: 12px 14px;
       background: linear-gradient(90deg, rgba(34, 64, 54, 0.68), rgba(20, 44, 40, 0.72));
@@ -80,7 +80,7 @@
       display: block;
       width: min(1280px, 100%);
       aspect-ratio: 16 / 9;
-      background: radial-gradient(circle at 40% 30%, #2a483a, #1d342b 54%, #16261f 100%);
+      background: #0f3822; /* 深绿色背景 */
     }
     .overlay {
       position: absolute;
@@ -134,7 +134,7 @@
   <main class="game-shell">
     <section class="hud">
       <div class="hud-left">
-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb        <div class="chip" id="hpChip">生命 100</div>
+        <div class="chip" id="hpChip">生命 100</div>
         <div class="chip" id="surviveChip">生存 0.0 秒</div>
         <div class="chip" id="weaponChip">武器: 火箭发射器</div>
         <div class="chip" id="nukeChip">核弹(6): 准备就绪</div>
@@ -146,14 +146,13 @@ bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb        <div class="chip" 
       <div class="overlay" id="overlay">
         <div class="card" id="panel">
           <h1>枪战吃鸡战场</h1>
-          <p>WASD移动，鼠标瞄准，左键/P键自动射击，B召唤小兵。</p>
-          <p>按 1-5 切换武器: 1手枪 2冲锋枪 3狙击枪 4火箭 5突击步枪</p>
-          <p>按 6 发射核弹(10s冷却，消灭一半敌人)，按 7 发射氢弹(30s冷却，全屏秒杀)。</p>
+          <p>深绿色无尽跑酷场，你和20名特种队员死守蓝色框框！</p>
+          <p>队友会围着边界帮你扫射，敌人如潮水般涌来（每秒10个）！</p>
           <button id="startBtn">开始战斗</button>
         </div>
       </div>
     </section>
-    <section class="tips" id="msgLine">提示：数字键1-7切换武器，B键在基地召唤无敌小兵。</section>
+    <section class="tips" id="msgLine">提示：深绿色无尽跑酷场，死守蓝色框框！20名特种队员协助你防守！</section>
   </main>
   <script>
     const canvas = document.getElementById("gameCanvas");
@@ -256,12 +255,12 @@ bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb        <div class="chip" 
       5: "突击步枪"
     };
 
-    function renderHomePanel(title = "枪战吃鸡战场", subtitle = "WASD移动，鼠标瞄准，左键/P键自动射击，B召唤无敌小兵。") {
+    function renderHomePanel(title = "枪战吃鸡战场", subtitle = "深绿色无尽跑酷场，死守蓝色框框！") {
       overlay.style.display = "flex";
       panel.innerHTML = `
         <h1>${title}</h1>
         <p>${subtitle}</p>
-        <p>按 1-5 切换武器，6/7发射大杀器，一直召唤小兵可合体！</p>
+        <p>20名特种队员会围着边界帮你扫射，注意躲避每秒10个敌人的疯狂进攻！</p>
         <button id="startBtn">开始战斗</button>
       `;
       document.getElementById("startBtn").addEventListener("click", resetGame);
@@ -273,20 +272,12 @@ bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb        <div class="chip" 
     }
 
     function createObstacles() {
-      return [
-        { x: 250, y: 130, w: 150, h: 90 },
-        { x: 520, y: 84, w: 240, h: 72 },
-        { x: 860, y: 180, w: 170, h: 80 },
-        { x: 180, y: 340, w: 220, h: 74 },
-        { x: 500, y: 300, w: 220, h: 130 },
-        { x: 890, y: 360, w: 220, h: 80 },
-        { x: 290, y: 540, w: 200, h: 90 },
-        { x: 760, y: 560, w: 250, h: 80 }
-      ];
+      // 其他全部去掉，只留下蓝色的框框（由 baseBox 和 drawGround 控制），不再生成任何其他障碍物
+      return [];
     }
 
-    // 基地框框的位置和大小
-    const baseBox = { x: W / 2 - 100, y: H / 2 - 100, w: 200, h: 200 };
+    // 基地框框的位置和大小 (蓝框)
+    const baseBox = { x: W / 2 - 150, y: H / 2 - 150, w: 300, h: 300 };
 
     function resetGame() {
       state.running = true;
@@ -296,16 +287,51 @@ bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb        <div class="chip" 
         r: 16,
         speed: 240,
         hp: 100,
-        shootCd: 0,
-        springCd: 0,
-        flyingTimer: state.pendingFlyTime,
-        jetpackTimer: state.pendingJetTime,
-        rocketOn: state.rocketOwned
+        shootCd: 0
       };
+      state.coins = 0;
+      state.score = 0;
+      state.springCharges = 0;
       state.pendingFlyTime = 0;
       state.pendingJetTime = 0;
       state.enemies = [];
       state.minions = [];
+      // 自动召唤20名特种队员，并且让他们初始位置均匀分布在蓝框边缘
+      for (let i = 0; i < 20; i++) {
+        // 计算边缘的周长分布
+        const perimeter = 2 * (baseBox.w + baseBox.h);
+        const pos = (i / 20) * perimeter;
+        let mx, my;
+        
+        if (pos < baseBox.w) {
+          // 上边
+          mx = baseBox.x + pos;
+          my = baseBox.y;
+        } else if (pos < baseBox.w + baseBox.h) {
+          // 右边
+          mx = baseBox.x + baseBox.w;
+          my = baseBox.y + (pos - baseBox.w);
+        } else if (pos < 2 * baseBox.w + baseBox.h) {
+          // 下边
+          mx = baseBox.x + baseBox.w - (pos - baseBox.w - baseBox.h);
+          my = baseBox.y + baseBox.h;
+        } else {
+          // 左边
+          mx = baseBox.x;
+          my = baseBox.y + baseBox.h - (pos - 2 * baseBox.w - baseBox.h);
+        }
+        
+        state.minions.push({
+          x: mx,
+          y: my,
+          r: 12,
+          speed: 150,
+          hp: 100, // 可以死后复活
+          fireCd: Math.random() * 0.5,
+          type: 'normal',
+          targetEdgePos: pos // 记录他们应该在边缘的哪个位置巡逻
+        });
+      }
       state.giantMinion = null;
       state.bullets = [];
       state.enemyBullets = [];
@@ -319,13 +345,13 @@ bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb        <div class="chip" 
       state.messageTimer = 0;
       overlay.style.display = "none";
       updateHud();
-      setMessage("战斗开始：每生存1秒获得1积分，每30秒获得1金币。");
+      setMessage("战斗开始：20名特种队员已就位在边缘，准备迎击每秒10个敌人！");
     }
 
     function stopGame() {
       state.running = false;
       playSound('gameover');
-      renderHomePanel("你被淘汰了", `本局生存 ${state.survival.toFixed(1)} 秒。你已返回主页，可继续购买后再开局。`);
+      renderHomePanel("你被淘汰了", `本局生存 ${state.survival.toFixed(1)} 秒。你已返回主页，可继续开局。`);
     }
 
     function addParticle(x, y, color, size = 2, life = 0.4) {
@@ -371,47 +397,7 @@ bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb        <div class="chip" 
     }
 
     function canPlayerPhase() {
-      return state.player.flyingTimer > 0 || state.player.jetpackTimer > 0 || state.player.rocketOn;
-    }
-
-    function buySpringAction() {
-      if (state.coins < 30) return setMessage("金币不足：弹跳弹簧需要30金币。");
-      state.coins -= 30;
-      state.springCharges += 1;
-      playSound('buy');
-      updateHud();
-      setMessage("购买成功：获得1次弹跳弹簧（按Q触发）。");
-    }
-
-    function buyFlyAction() {
-      if (state.coins < 100) return setMessage("金币不足：飞行装置需要100金币。");
-      state.coins -= 100;
-      playSound('buy');
-      if (state.running) state.player.flyingTimer = Math.max(state.player.flyingTimer, 5);
-      else state.pendingFlyTime += 5;
-      updateHud();
-      setMessage("飞行装置已购买：可飞行5秒。");
-    }
-
-    function buyJetAction() {
-      if (state.score < 200) return setMessage("积分不足：喷气背包需要200积分。");
-      state.score -= 200;
-      playSound('buy');
-      if (state.running) state.player.jetpackTimer = Math.max(state.player.jetpackTimer, 15);
-      else state.pendingJetTime += 15;
-      updateHud();
-      setMessage("喷气背包已购买：可持续15秒。");
-    }
-
-    function buyRocketAction() {
-      if (state.rocketOwned) return setMessage("火箭已解锁：可永久飞行穿障。");
-      if (state.score < 1000) return setMessage("积分不足：火箭需要1000积分。");
-      state.score -= 1000;
-      state.rocketOwned = true;
-      playSound('buy');
-      if (state.running) state.player.rocketOn = true;
-      updateHud();
-      setMessage("火箭解锁成功：永久飞行并穿越障碍。");
+      return false;
     }
 
     function updateHud() {
@@ -472,6 +458,7 @@ bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb        <div class="chip" 
           vy: Math.sin(finalAngle) * stats.speed,
           damage: stats.damage,
           radius: stats.radius,
+          color: stats.color,
           phase: true, // 子弹始终可以穿墙
           isPlayerBullet: true,
           isExplosive: state.currentWeapon === 4 // 火箭发射器特有属性
@@ -480,20 +467,6 @@ bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb        <div class="chip" 
       
       playSound('shoot');
       for (let i = 0; i < 4; i++) addParticle(p.x, p.y, stats.color, 2.2, 0.24);
-    }
-
-    function activateSpring() {
-      const p = state.player;
-      if (state.springCharges < 1 || p.springCd > 0) return;
-      state.springCharges -= 1;
-      p.springCd = 0.85;
-      const angle = Math.atan2(mouse.y - p.y, mouse.x - p.x);
-      p.x += Math.cos(angle) * 220;
-      p.y += Math.sin(angle) * 220;
-      p.x = Math.max(p.r, Math.min(W - p.r, p.x));
-      p.y = Math.max(p.r, Math.min(H - p.r, p.y));
-      for (let i = 0; i < 16; i++) addParticle(p.x, p.y, "#b4ff4f", 2.6, 0.5);
-      setMessage("弹跳触发：快速位移完成。");
     }
 
     function updatePlayer(dt) {
@@ -508,25 +481,25 @@ bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb        <div class="chip" 
       dx /= len;
       dy /= len;
 
-      const speedMul = p.jetpackTimer > 0 ? 1.65 : p.flyingTimer > 0 ? 1.3 : 1;
+      const speedMul = 1;
       const nx = p.x + dx * p.speed * speedMul * dt;
       const ny = p.y + dy * p.speed * speedMul * dt;
-      moveWithObstacle(p, nx, ny, canPlayerPhase());
-
-      p.x = Math.max(p.r, Math.min(W - p.r, p.x));
-      p.y = Math.max(p.r, Math.min(H - p.r, p.y));
+      
+      // 限制玩家在蓝框(baseBox)内
+      p.x = Math.max(baseBox.x + p.r + 4, Math.min(baseBox.x + baseBox.w - p.r - 4, nx));
+      p.y = Math.max(baseBox.y + p.r + 4, Math.min(baseBox.y + baseBox.h - p.r - 4, ny));
 
       p.shootCd = Math.max(0, p.shootCd - dt);
-      p.springCd = Math.max(0, p.springCd - dt);
-      p.flyingTimer = Math.max(0, p.flyingTimer - dt);
-      p.jetpackTimer = Math.max(0, p.jetpackTimer - dt);
 
       // 自动开火或按下鼠标时发射子弹，始终朝向鼠标当前位置
       if (mouse.down || state.autoFire) firePlayerBullet();
       if (keys[" "]) {
+        // 冲刺也会被限制在蓝框内
         const angle = Math.atan2(mouse.y - p.y, mouse.x - p.x);
-        p.x += Math.cos(angle) * 180 * dt;
-        p.y += Math.sin(angle) * 180 * dt;
+        const sprintX = p.x + Math.cos(angle) * 180 * dt;
+        const sprintY = p.y + Math.sin(angle) * 180 * dt;
+        p.x = Math.max(baseBox.x + p.r + 4, Math.min(baseBox.x + baseBox.w - p.r - 4, sprintX));
+        p.y = Math.max(baseBox.y + p.r + 4, Math.min(baseBox.y + baseBox.h - p.r - 4, sprintY));
       }
       if (keys["6"]) {
         keys["6"] = false;
@@ -541,11 +514,6 @@ bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb        <div class="chip" 
         keys["p"] = false;
         state.autoFire = !state.autoFire;
         setMessage(state.autoFire ? "自动开火：已开启" : "自动开火：已关闭");
-      }
-
-      if (keys["b"]) {
-        keys["b"] = false;
-        spawnMinion();
       }
 
       if (keys["1"]) state.currentWeapon = 1;
@@ -588,103 +556,55 @@ bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb        <div class="chip" 
       setMessage("氢弹发射！全屏敌人被秒杀。");
     }
 
-    function spawnMinionAt(x, y) {
-      // 增加转换视觉效果：金光爆发，然后变成蓝色小兵
-      for (let i = 0; i < 15; i++) {
-        addParticle(x, y, "#f1c40f", 4, 0.5); // 金色
-        addParticle(x, y, "#3498db", 3, 0.4); // 蓝色
-      }
-      
-      state.minions.push({
-        x: x,
-        y: y,
-        r: 12,
-        speed: 150,
-        hp: Infinity, // 无敌
-        fireCd: 0.5,
-        type: 'normal' // 普通小兵
-      });
-      checkGiantMinionMerge();
-    }
-
-    function spawnMinion() {
-      // 召唤小兵，无敌且在基地框框内生成
-      const spawnX = baseBox.x + Math.random() * baseBox.w;
-      const spawnY = baseBox.y + Math.random() * baseBox.h;
-      
-      state.minions.push({
-        x: spawnX,
-        y: spawnY,
-        r: 12,
-        speed: 150,
-        hp: Infinity, // 无敌
-        fireCd: 0.5,
-        type: 'normal' // 普通小兵
-      });
-      
-      playSound('spawn');
-      
-      // 检查是否可以合并成巨型小兵
-      checkGiantMinionMerge();
-    }
-
-    function checkGiantMinionMerge() {
-      // 假设当基地内普通小兵数量达到 10000 个时，融合成一个巨型小兵
-      const normalMinions = state.minions.filter(m => m.type === 'normal');
-      if (normalMinions.length >= 10000) {
-        // 移除这 10000 个普通小兵
-        let removed = 0;
-        state.minions = state.minions.filter(m => {
-          if (m.type === 'normal' && removed < 10000) {
-            removed++;
-            return false; // remove
-          }
-          return true; // keep
-        });
-        
-        // 生成新的巨型小兵，位置随机在地图其他地方，不在基地框内
-        let giantX = Math.random() * W;
-        let giantY = Math.random() * H;
-        
-        // 简单确保它不在基地框内出生
-        while (giantX > baseBox.x && giantX < baseBox.x + baseBox.w && 
-               giantY > baseBox.y && giantY < baseBox.y + baseBox.h) {
-          giantX = Math.random() * W;
-          giantY = Math.random() * H;
-        }
-
-        const newGiant = {
-          x: giantX,
-          y: giantY,
-          r: 40,
-          speed: 80, // 移动慢一点
-          hp: Infinity,
-          fireCd: 1.0,
-          type: 'giant',
-          // 巨型小兵的巡逻目标点
-          targetX: Math.random() * W,
-          targetY: Math.random() * H
-        };
-        state.minions.push(newGiant);
-        playSound('buy'); // 播放融合音效
-        setMessage("一万名小兵集结，融合成巨型小兵并前往外部战场！");
-      } else {
-        setMessage(`已召唤小兵！(${normalMinions.length}/10000)`);
-      }
-    }
-
     function updateEnemies(dt) {
       const p = state.player;
       for (const e of state.enemies) {
-        const angle = Math.atan2(p.y - e.y, p.x - e.x);
-        const nx = e.x + Math.cos(angle) * e.speed * dt;
-        const ny = e.y + Math.sin(angle) * e.speed * dt;
+        // 敌人朝向蓝框中心(或者玩家)移动，但不会进入蓝框
+        // 为了防止所有敌人挤在同一个点，稍微加一点随机偏移或者朝向最近的蓝框边缘
+        let targetX = p.x;
+        let targetY = p.y;
+        
+        // 如果玩家有车或者火箭在外面跑，敌人就追玩家，不管蓝框了
+        if (p.hasCar || p.rocketOn) {
+          targetX = p.x;
+          targetY = p.y;
+        }
+
+        const angle = Math.atan2(targetY - e.y, targetX - e.x);
+        let nx = e.x + Math.cos(angle) * e.speed * dt;
+        let ny = e.y + Math.sin(angle) * e.speed * dt;
+        
+        // 防止敌人进入蓝框(baseBox)，除非玩家在外面
+        if (!p.hasCar && !p.rocketOn) {
+          const inBoxX = nx + e.r > baseBox.x && nx - e.r < baseBox.x + baseBox.w;
+          const inBoxY = ny + e.r > baseBox.y && ny - e.r < baseBox.y + baseBox.h;
+          
+          if (inBoxX && inBoxY) {
+            // 沿着蓝框边缘滑动，而不是完全卡死
+            if (e.x + e.r <= baseBox.x || e.x - e.r >= baseBox.x + baseBox.w) {
+              nx = e.x; // 卡在X轴，允许Y轴滑动
+            } else if (e.y + e.r <= baseBox.y || e.y - e.r >= baseBox.y + baseBox.h) {
+              ny = e.y; // 卡在Y轴，允许X轴滑动
+            } else {
+               // 极端情况完全卡在里面（应该不会发生），推出去
+               nx = e.x; ny = e.y;
+            }
+          }
+        }
+
         moveWithObstacle(e, nx, ny, false);
         e.fireCd -= dt;
         if (e.fireCd <= 0) {
           e.fireCd = 1.15 + Math.random() * 0.85;
+          
+          // 敌人攻击时，随机选择蓝框内的一个目标（玩家或队友）
+          let target = p;
+          if (state.minions.length > 0 && Math.random() > 0.5) {
+            target = state.minions[Math.floor(Math.random() * state.minions.length)];
+          }
+          const fireAngle = Math.atan2(target.y - e.y, target.x - e.x);
           const spread = (Math.random() - 0.5) * 0.26;
-          const a = angle + spread;
+          const a = fireAngle + spread;
           state.enemyBullets.push({
             x: e.x,
             y: e.y,
@@ -698,99 +618,68 @@ bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb        <div class="chip" 
     }
 
     function updateMinions(dt) {
+      const perimeter = 2 * (baseBox.w + baseBox.h);
       for (const m of state.minions) {
-        // All minions aim at the mouse cursor
-        const angle = Math.atan2(mouse.y - m.y, mouse.x - m.x);
-        
-        if (m.type === 'giant') {
-          // Giant minion logic: move to target point
-          const dToTarget = Math.hypot(m.targetX - m.x, m.targetY - m.y);
-          if (dToTarget < 10) {
-            // Pick new target outside base box
-            m.targetX = Math.random() * W;
-            m.targetY = Math.random() * H;
-          } else {
-            const moveAngle = Math.atan2(m.targetY - m.y, m.targetX - m.x);
-            const nx = m.x + Math.cos(moveAngle) * m.speed * dt;
-            const ny = m.y + Math.sin(moveAngle) * m.speed * dt;
-            moveWithObstacle(m, nx, ny, false);
-          }
-          
-          // Fire at closest enemy (Hydrogen Bomb)
-          m.fireCd -= dt;
-          if (m.fireCd <= 0 && state.enemies.length > 0) { // Only fire if enemies exist
-            // Find closest enemy
-            let closestEnemy = null;
-            let minDist = Infinity;
-            for (const e of state.enemies) {
-              const d = Math.hypot(e.x - m.x, e.y - m.y);
-              if (d < minDist) {
-                minDist = d;
-                closestEnemy = e;
-              }
-            }
-
-            if (closestEnemy) {
-              // Minions fire a Hydrogen Bomb equivalent
-              m.fireCd = 5.0; // Give it a 5-second cooldown like the player's H-Bomb so it doesn't instantly wipe the screen every frame
-              playSound('buy'); // Play explosion sound
-              
-              // Visual indicator of minion firing H-Bomb
-              for (let i = 0; i < 8; i++) addParticle(m.x, m.y, "#ff4757", 4, 0.4);
-              
-              // Kill all enemies on screen (H-Bomb effect)
-              for (const e of state.enemies) {
-                if (e.dead) continue;
-                e.hp = 0;
-                e.dead = true;
-                for (let j = 0; j < 10; j++) addParticle(e.x, e.y, "#ff4757", 5, 0.6);
-                
-                // Convert killed enemy to minion
-                spawnMinionAt(e.x, e.y);
-              }
-            }
-          }
-          
+        // 队友缓慢沿着边界巡逻移动
+        m.targetEdgePos = (m.targetEdgePos + 40 * dt) % perimeter;
+        let mx, my;
+        const pos = m.targetEdgePos;
+        if (pos < baseBox.w) {
+          mx = baseBox.x + pos;
+          my = baseBox.y;
+        } else if (pos < baseBox.w + baseBox.h) {
+          mx = baseBox.x + baseBox.w;
+          my = baseBox.y + (pos - baseBox.w);
+        } else if (pos < 2 * baseBox.w + baseBox.h) {
+          mx = baseBox.x + baseBox.w - (pos - baseBox.w - baseBox.h);
+          my = baseBox.y + baseBox.h;
         } else {
-          // Normal minion logic
-          if (state.enemies.length === 0) continue;
-          
-          // Find closest enemy just for movement logic
-          let closestEnemy = null;
-          let minDist = Infinity;
-          for (const e of state.enemies) {
-            const d = Math.hypot(e.x - m.x, e.y - m.y);
-            if (d < minDist) {
-              minDist = d;
-              closestEnemy = e;
-            }
+          mx = baseBox.x;
+          my = baseBox.y + baseBox.h - (pos - 2 * baseBox.w - baseBox.h);
+        }
+        
+        // 稍微加一点内部偏移，避免正好在边线上被打到或者卡住
+        const padding = 10;
+        m.x = Math.max(baseBox.x + padding, Math.min(baseBox.x + baseBox.w - padding, mx));
+        m.y = Math.max(baseBox.y + padding, Math.min(baseBox.y + baseBox.h - padding, my));
+
+        if (state.enemies.length === 0) continue;
+        
+        // Find closest enemy
+        let closestEnemy = null;
+        let minDist = Infinity;
+        for (const e of state.enemies) {
+          const d = Math.hypot(e.x - m.x, e.y - m.y);
+          if (d < minDist) {
+            minDist = d;
+            closestEnemy = e;
           }
-          
-          if (closestEnemy) {
-            const moveAngle = Math.atan2(closestEnemy.y - m.y, closestEnemy.x - m.x);
-            // Move towards enemy if too far, stop if close enough
-            if (minDist > 100) {
-              const nx = m.x + Math.cos(moveAngle) * m.speed * dt;
-              const ny = m.y + Math.sin(moveAngle) * m.speed * dt;
-              moveWithObstacle(m, nx, ny, false);
-            }
-          }
-          
-          // Fire at closest enemy (Hydrogen Bomb)
+        }
+        
+        if (closestEnemy) {
+          // Fire at closest enemy (帮助扫射)
           m.fireCd -= dt;
-          if (m.fireCd <= 0 && closestEnemy) {
-            m.fireCd = 5.0; // 5 seconds cooldown
-            playSound('buy'); // Explosion sound
-            
-            for (let i = 0; i < 8; i++) addParticle(m.x, m.y, "#ff4757", 4, 0.4);
-            
-            // Kill all enemies on screen
-            for (const e of state.enemies) {
-              if (e.dead) continue;
-              e.hp = 0;
-              e.dead = true;
-              for (let j = 0; j < 10; j++) addParticle(e.x, e.y, "#ff4757", 5, 0.6);
+          if (m.fireCd <= 0) {
+            const stats = getWeaponStats(state.currentWeapon);
+            m.fireCd = stats.cooldown * 1.2; // 射击频率跟玩家差不多
+            playSound('shoot');
+            const angle = Math.atan2(closestEnemy.y - m.y, closestEnemy.x - m.x);
+            for (let i = 0; i < stats.bulletsToFire; i++) {
+              const finalAngle = angle + (Math.random() - 0.5) * stats.spread;
+              state.bullets.push({
+                x: m.x + Math.cos(finalAngle) * 20,
+                y: m.y + Math.sin(finalAngle) * 20,
+                vx: Math.cos(finalAngle) * stats.speed,
+                vy: Math.sin(finalAngle) * stats.speed,
+                damage: stats.damage,
+                radius: stats.radius,
+                color: stats.color,
+                phase: true,
+                isPlayerBullet: true,
+                isExplosive: state.currentWeapon === 4
+              });
             }
+            for (let i = 0; i < 4; i++) addParticle(m.x, m.y, stats.color, 2, 0.2);
           }
         }
       }
@@ -801,6 +690,9 @@ bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb        <div class="chip" 
       for (const b of state.bullets) {
         b.x += b.vx * dt;
         b.y += b.vy * dt;
+        
+        // 玩家和队友的子弹可以从蓝框里打出去，穿透蓝框边界
+        // 如果子弹不是穿透类型，碰到外面的普通障碍物会消失
         if (!b.phase && isInsideObstacle(b.x, b.y, b.radius)) b.dead = true;
         for (const e of state.enemies) {
           if (e.dead) continue;
@@ -841,9 +733,20 @@ bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb        <div class="chip" 
       for (const b of state.enemyBullets) {
         b.x += b.vx * dt;
         b.y += b.vy * dt;
-        if (isInsideObstacle(b.x, b.y, b.radius) && !canPlayerPhase()) b.dead = true;
+        
+        // 敌人的子弹打不穿蓝框（碰到基地框边缘就消失）
+        const isInsideBase = b.x >= baseBox.x && b.x <= baseBox.x + baseBox.w && 
+                             b.y >= baseBox.y && b.y <= baseBox.y + baseBox.h;
+        if (isInsideBase && !p.hasCar && !p.rocketOn) {
+           b.dead = true;
+           addParticle(b.x, b.y, "#8ce6ff", 2, 0.2); // 击中墙壁的特效
+           continue;
+        }
+
+        // 敌人子弹打不穿普通障碍物
+        if (isInsideObstacle(b.x, b.y, b.radius)) b.dead = true;
         const d = Math.hypot(b.x - p.x, b.y - p.y);
-          if (d <= b.radius + p.r) {
+          if (d <= b.radius + p.r && (!isInsideBase || p.hasCar || p.rocketOn)) { // 只有在玩家跑到外面时才可能被击中
             b.dead = true;
             if (!p.rocketOn) {
               p.hp -= b.damage;
@@ -858,7 +761,7 @@ bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb        <div class="chip" 
         // Check enemy bullets hitting minions
         for (const b of state.enemyBullets) {
           for (const m of state.minions) {
-            if (m.dead || m.hp === Infinity) continue;
+            if (m.dead) continue;
             const d = Math.hypot(b.x - m.x, b.y - m.y);
             if (d <= b.radius + m.r) {
               b.dead = true;
@@ -866,8 +769,12 @@ bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb        <div class="chip" 
               playSound('hit');
               for (let i = 0; i < 4; i++) addParticle(m.x, m.y, "#8ce6ff", 2, 0.2);
               if (m.hp <= 0) {
-                m.dead = true;
+                // 如果队友死了的话，他就会复活在蓝色的框框那里
+                m.hp = 100;
+                m.x = baseBox.x + Math.random() * baseBox.w;
+                m.y = baseBox.y + Math.random() * baseBox.h;
                 for (let i = 0; i < 8; i++) addParticle(m.x, m.y, "#56c4fa", 3, 0.4);
+                setMessage("队友阵亡，已在蓝色框框内重新部署！");
               }
             }
           }
@@ -885,8 +792,8 @@ bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb        <div class="chip" 
     }
 
     function updateEconomy(dt) {
+      // 移除更新积分和金币的逻辑，现在直接按生存时间出怪
       state.survival += dt;
-      // 移除经济系统，无需处理金币和积分
     }
 
     function drawGround() {
@@ -908,12 +815,12 @@ bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb        <div class="chip" 
         ctx.stroke();
       }
       
-      // 绘制基地框框
-      ctx.strokeStyle = "rgba(52, 152, 219, 0.3)";
-      ctx.lineWidth = 2;
-      ctx.setLineDash([5, 5]);
+      // 绘制基地框框 (蓝色的框框)
+      ctx.fillStyle = "rgba(44, 62, 80, 0.4)"; // 给蓝框加一点半透明背景色
+      ctx.fillRect(baseBox.x, baseBox.y, baseBox.w, baseBox.h);
+      ctx.strokeStyle = "rgba(52, 152, 219, 0.9)"; // 蓝色的框框
+      ctx.lineWidth = 4;
       ctx.strokeRect(baseBox.x, baseBox.y, baseBox.w, baseBox.h);
-      ctx.setLineDash([]);
       
       for (const o of state.obstacles) {
         ctx.fillStyle = "rgba(80, 100, 92, 0.95)";
@@ -928,7 +835,7 @@ bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb        <div class="chip" 
       for (const b of state.bullets) {
         ctx.beginPath();
         ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
-        ctx.fillStyle = b.phase ? "#ffb449" : "#8ff6dd";
+        ctx.fillStyle = b.color || (b.phase ? "#ffb449" : "#8ff6dd");
         ctx.fill();
       }
       for (const b of state.enemyBullets) {
@@ -954,26 +861,45 @@ bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb        <div class="chip" 
         ctx.strokeStyle = "#8ce6ff";
         ctx.lineWidth = 2;
         ctx.stroke();
-        
-        // Draw minion health bar
-        ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
-        ctx.fillRect(m.x - 10, m.y - 18, 20, 4);
-        ctx.fillStyle = "#2ecc71";
-        ctx.fillRect(m.x - 10, m.y - 18, 20 * (m.hp / 40), 4);
       }
       const p = state.player;
       const angle = Math.atan2(mouse.y - p.y, mouse.x - p.x);
       ctx.save();
       ctx.translate(p.x, p.y);
       ctx.rotate(angle);
-      ctx.beginPath();
-      ctx.arc(0, 0, p.r, 0, Math.PI * 2);
-      ctx.fillStyle = p.rocketOn ? "#f09d3f" : p.jetpackTimer > 0 ? "#56c4fa" : p.flyingTimer > 0 ? "#8ce6ff" : "#50e0a6";
-      ctx.fill();
-      ctx.beginPath();
-      ctx.rect(0, -4, 22, 8);
-      ctx.fillStyle = "#d6e8e0";
-      ctx.fill();
+      
+      if (p.hasCar) {
+        // 绘制车 (俯视角)
+        ctx.fillStyle = "#e74c3c"; // 红色车身
+        ctx.fillRect(-15, -10, 30, 20);
+        ctx.fillStyle = "#333"; // 轮胎
+        ctx.fillRect(-12, -12, 6, 4);
+        ctx.fillRect(6, -12, 6, 4);
+        ctx.fillRect(-12, 8, 6, 4);
+        ctx.fillRect(6, 8, 6, 4);
+        ctx.fillStyle = "#8ce6ff"; // 车窗
+        ctx.fillRect(-5, -7, 10, 14);
+        // 绘制品牌文字
+        ctx.save();
+        ctx.translate(0, 0);
+        ctx.rotate(Math.PI / 2);
+        ctx.fillStyle = "#fff";
+        ctx.font = "8px sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(p.carBrand ? p.carBrand.substring(0, 2) : "车", 0, 0);
+        ctx.restore();
+      } else {
+        // 普通玩家绘制
+        ctx.beginPath();
+        ctx.arc(0, 0, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = p.rocketOn ? "#f09d3f" : p.jetpackTimer > 0 ? "#56c4fa" : p.flyingTimer > 0 ? "#8ce6ff" : "#50e0a6";
+        ctx.fill();
+        ctx.beginPath();
+        ctx.rect(0, -4, 22, 8);
+        ctx.fillStyle = "#d6e8e0";
+        ctx.fill();
+      }
       ctx.restore();
 
       if (p.flyingTimer > 0 || p.jetpackTimer > 0 || p.rocketOn) {
@@ -1004,14 +930,16 @@ bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb        <div class="chip" 
         updateBullets(dt);
         updateParticles(dt);
         updateEconomy(dt);
-        // Dynamic spawning based on minion count
-        // Enemy count must be at least minion count + 1
-        const targetEnemyCount = Math.max(state.minions.length + 1, 5); // Ensure there are always at least 5 enemies
+        // Dynamic spawning based on survival time
+        // 1秒钟会有10个敌人出现
+        const targetEnemyCount = Math.floor(state.survival) * 10;
         
         state.enemySpawnTimer -= dt;
         if (state.enemySpawnTimer <= 0) {
-          state.enemySpawnTimer = 0.5; // check frequently
-          if (state.enemies.length < targetEnemyCount) {
+          state.enemySpawnTimer = 0.1; // check frequently
+          // 每次最多生成一批防止卡顿
+          let spawnCount = Math.min(20, targetEnemyCount - state.enemies.length);
+          for(let i=0; i<spawnCount; i++) {
             spawnEnemy();
           }
         }
@@ -1023,10 +951,10 @@ bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb        <div class="chip" 
 
         if (state.player.hp <= 0) stopGame();
         if (state.messageTimer > 0) {
-          state.messageTimer -= dt;
-        } else if (state.running) {
-          msgLine.textContent = "提示：Q是弹簧位移，空格冲刺，P切换自动开火，B免费召唤小兵。";
-        }
+        state.messageTimer -= dt;
+      } else if (state.running) {
+        msgLine.textContent = "提示：按 1-5 切换武器，6/7发射大杀器。20名特种队员正在协助防守！";
+      }
         updateHud();
       }
       drawGround();
@@ -1050,8 +978,8 @@ bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb        <div class="chip" 
 
     startBtn.addEventListener("click", resetGame);
     buySpring.addEventListener("click", buySpringAction);
-    buyFly.addEventListener("click", buyFlyAction);
     buyJet.addEventListener("click", buyJetAction);
+    buyCar.addEventListener("click", buyCarAction);
     buyRocket.addEventListener("click", buyRocketAction);
     renderHomePanel();
     updateHud();
