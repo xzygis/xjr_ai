@@ -3,271 +3,188 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>小游戏中心</title>
+    <title>xjr-ai 小游戏中心</title>
     <style>
         :root {
-            --primary-color: #2E7D32;
-            --secondary-color: #1B5E20;
-            --bg-color: #f4f7f6;
-            --card-bg: #ffffff;
-            --text-color: #333333;
-            --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-            --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            --primary-color: #2c3e50;
+            --secondary-color: #34495e;
+            --accent-color: #3498db;
+            --text-color: #ecf0f1;
+            --bg-color: #1a252f;
+            --card-bg: #2c3e50;
         }
 
         * {
+            box-sizing: border-box;
             margin: 0;
             padding: 0;
-            box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-color);
             line-height: 1.6;
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
         }
 
         header {
-            background-color: var(--primary-color);
-            color: white;
+            background-color: var(--secondary-color);
+            padding: 2rem;
             text-align: center;
-            padding: 2rem 0;
-            margin-bottom: 2rem;
-            box-shadow: var(--shadow);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
         }
 
-        h1 {
-            font-size: 2.2rem;
-            margin-bottom: 0.5rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
-            font-weight: 700;
+        header h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            color: var(--accent-color);
         }
 
-        p.subtitle {
-            font-size: 1.05rem;
-            opacity: 0.95;
-            font-weight: 400;
+        header p {
+            margin-top: 0.5rem;
+            color: #bdc3c7;
         }
 
-        .container {
+        main {
             max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 20px;
-            flex-grow: 1;
+            margin: 2rem auto;
+            padding: 0 1rem;
         }
 
         .game-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 2.5rem;
-            padding-bottom: 3rem;
-        }
-
-        @media (max-width: 1024px) {
-            .game-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 2rem;
         }
 
         .game-card {
             background-color: var(--card-bg);
-            border-radius: 16px;
-            overflow: hidden;
-            box-shadow: var(--shadow);
-            transition: var(--transition);
+            border-radius: 10px;
+            padding: 1.5rem;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
             display: flex;
             flex-direction: column;
-            text-decoration: none;
-            color: inherit;
-            border: 1px solid rgba(0,0,0,0.05);
+            border-top: 4px solid var(--accent-color);
         }
 
         .game-card:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 16px 32px rgba(0, 0, 0, 0.12);
-        }
-
-        .game-icon {
-            height: 180px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 5rem;
-            color: white;
-            transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
-        }
-        
-        .game-card:hover .game-icon {
-            transform: scale(1.1);
-        }
-
-        .game-info {
-            padding: 1.5rem;
-            display: flex;
-            flex-direction: column;
-            flex-grow: 1;
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.4);
         }
 
         .game-title {
-            font-size: 1.35rem;
-            margin-bottom: 0.5rem;
-            color: #1e293b;
-            font-weight: 700;
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #fff;
         }
 
         .game-desc {
-            color: #64748b;
+            color: #bdc3c7;
             margin-bottom: 1.5rem;
             flex-grow: 1;
-            font-size: 0.9rem;
         }
 
         .play-btn {
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 0.8rem;
-            border-radius: 8px;
-            font-weight: 600;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: var(--transition);
+            display: inline-block;
+            background-color: var(--accent-color);
+            color: #fff;
+            text-decoration: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 5px;
             text-align: center;
-            width: 100%;
-            margin-top: auto;
+            font-weight: bold;
+            transition: background-color 0.2s ease;
         }
 
-        .game-card:hover .play-btn {
-            background-color: var(--secondary-color);
+        .play-btn:hover {
+            background-color: #2980b9;
         }
 
-            /* 游戏特定的图标背景色 */
-        .icon-battle { background: linear-gradient(135deg, #10b981, #0ea5e9); }
-        .icon-parkour { background: linear-gradient(135deg, #2563eb, #60a5fa); }
-        .icon-racing { background: linear-gradient(135deg, #f59e0b, #fbbf24); }
-        .icon-snake { background: linear-gradient(135deg, #4ade80, #10b981); }
-        .icon-bomb { background: linear-gradient(135deg, #ef4444, #b91c1c); }
-        .icon-airplane { background: linear-gradient(135deg, #818cf8, #3b82f6); }
-        
         footer {
             text-align: center;
-            padding: 1.5rem;
-            color: #9ca3af;
-            border-top: 1px solid #ddd;
+            padding: 2rem;
+            color: #7f8c8d;
             margin-top: auto;
-            background-color: var(--card-bg);
-            font-size: 0.9rem;
-        }
-        @media (max-width: 768px) {
-            .game-grid {
-                grid-template-columns: 1fr;
-                gap: 1.5rem;
-                padding-bottom: 2rem;
-            }
-            h1 {
-                font-size: 1.8rem;
-            }
-            .game-icon {
-                height: 140px;
-            }
-            header {
-                padding: 1.5rem 0;
-            }
         }
     </style>
 </head>
 <body>
     <header>
-        <h1><img src="https://api.iconify.design/noto:video-game.svg" alt="game controller" style="width: 40px; height: 40px; vertical-align: middle;"> 小游戏中心</h1>
-        <p class="subtitle">选择你喜欢的游戏开始游玩吧！</p>
+        <h1>🎮 xjr-ai 小游戏中心</h1>
+        <p>探索、生存、竞技，全都在这里</p>
     </header>
 
-    <div class="container">
+    <main>
         <div class="game-grid">
+            
+            <!-- 辐射避难所 -->
+            <div class="game-card">
+                <h2 class="game-title">地下避难所</h2>
+                <p class="game-desc">外面有致命核辐射，带领100个幸存者在地下秘密基地生存。分配工作、生产食物和净水，维持士气！</p>
+                <a href="games/fallout-shelter/index.html" class="play-btn">开始生存</a>
+            </div>
+
             <!-- 枪战吃鸡战场 -->
-            <a href="games/battle-royale-shooter/index.html" class="game-card">
-                <div class="game-icon icon-battle">
-                    <img src="https://api.iconify.design/noto:water-pistol.svg" alt="water pistol" style="width: 80px; height: 80px; filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.2));">
-                </div>
-                <div class="game-info">
-                    <h2 class="game-title">枪战吃鸡战场</h2>
-                    <p class="game-desc">俯视视角射击游戏，20人从天而降作战！</p>
-                    <div class="play-btn">开始游戏</div>
-                </div>
-            </a>
+            <div class="game-card">
+                <h2 class="game-title">枪战吃鸡战场</h2>
+                <p class="game-desc">俯视视角射击生存游戏，深绿色无尽跑酷场背景。开局自带20名特种队员，抵御潮水般的敌人！</p>
+                <a href="games/battle-royale-shooter/index.html" class="play-btn">开始战斗</a>
+            </div>
 
-            <!-- 跑酷游戏 -->
-            <a href="games/parkour-game/index.html" class="game-card">
-                <div class="game-icon icon-parkour">
-                    <img src="https://api.iconify.design/noto:person-running.svg" alt="running person" style="width: 80px; height: 80px; filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.2));">
-                </div>
-                <div class="game-info">
-                    <h2 class="game-title">无尽跑酷</h2>
-                    <p class="game-desc">横版跑酷游戏，长按跳跃可滑翔飞行！</p>
-                    <div class="play-btn">开始游戏</div>
-                </div>
-            </a>
-
-            <!-- 赛车游戏 -->
-            <a href="games/racing/index.html" class="game-card">
-                <div class="game-icon icon-racing">
-                    <img src="https://api.iconify.design/noto:racing-car.svg" alt="racing car" style="width: 80px; height: 80px; filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.2));">
-                </div>
-                <div class="game-info">
-                    <h2 class="game-title">赛车狂飙</h2>
-                    <p class="game-desc">极速赛车体验，驾驶你的赛车在赛道上驰骋。</p>
-                    <div class="play-btn">开始游戏</div>
-                </div>
-            </a>
-
-            <!-- 贪吃蛇 -->
-            <a href="games/snake/index.html" class="game-card">
-                <div class="game-icon icon-snake">
-                    <img src="https://api.iconify.design/noto:snake.svg" alt="snake" style="width: 80px; height: 80px; filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.2));">
-                </div>
-                <div class="game-info">
-                    <h2 class="game-title">无敌贪吃蛇</h2>
-                    <p class="game-desc">超大地图！碰到边界反弹，吃掉比你短的蛇成为霸主！</p>
-                    <div class="play-btn">开始游戏</div>
-                </div>
-            </a>
-
-            <!-- 炸穿地球 -->
-            <a href="games/bomb-earth/index.html" class="game-card">
-                <div class="game-icon icon-bomb">
-                    <img src="https://api.iconify.design/noto:bomb.svg" alt="bomb" style="width: 80px; height: 80px; filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.2));">
-                </div>
-                <div class="game-info">
-                    <h2 class="game-title">炸穿地球逃离空岛，变身海洋动物变身晋级</h2>
-                    <p class="game-desc">炸穿一亿万千米深的地球掉入海洋，从贝壳进化为人类开始荒岛生存！</p>
-                    <div class="play-btn">开始游戏</div>
-                </div>
-            </a>
+            <!-- 丧尸生存基地 -->
+            <div class="game-card">
+                <h2 class="game-title">丧尸生存基地 (3D)</h2>
+                <p class="game-desc">全3D视角的丧尸生存与基地建设游戏。驾驶冰火矿车驱赶盲丧尸，与大刘、指挥官并肩作战。</p>
+                <a href="games/zombie-survival/index.html" class="play-btn">进入基地</a>
+            </div>
 
             <!-- 模拟飞行 -->
-            <a href="games/airplane-flight/index.html" class="game-card">
-                <div class="game-icon icon-airplane">
-                    <img src="https://api.iconify.design/noto:airplane.svg" alt="airplane" style="width: 80px; height: 80px; filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.2));">
-                </div>
-                <div class="game-info">
-                    <h2 class="game-title">模拟飞行：超音速迫降</h2>
-                    <p class="game-desc">搭载乘客起飞，安全降落赚取赏金，坠机时可弹射化身超音速战机！</p>
-                    <div class="play-btn">开始游戏</div>
-                </div>
-            </a>
+            <div class="game-card">
+                <h2 class="game-title">模拟飞行：超音速迫降</h2>
+                <p class="game-desc">飞机驾驶与紧急求生模拟游戏。起飞、迫降，化身超音速战机逃生。</p>
+                <a href="games/airplane-flight/index.html" class="play-btn">驾驶飞机</a>
+            </div>
+
+            <!-- 炸穿地球 -->
+            <div class="game-card">
+                <h2 class="game-title">炸穿地球逃离空岛</h2>
+                <p class="game-desc">炸穿1亿万千米深的地球掉入海洋，从贝壳进化为人类开始荒岛生存！</p>
+                <a href="games/bomb-earth/index.html" class="play-btn">开始轰炸</a>
+            </div>
+
+            <!-- 无敌贪吃蛇 -->
+            <div class="game-card">
+                <h2 class="game-title">无敌贪吃蛇</h2>
+                <p class="game-desc">大乱斗模式的贪吃蛇游戏。超大地图，吃掉比自己短的蛇成为霸主！</p>
+                <a href="games/snake/index.html" class="play-btn">进入大乱斗</a>
+            </div>
+
+            <!-- 3D 射击生存 -->
+            <div class="game-card">
+                <h2 class="game-title">3D 射击生存</h2>
+                <p class="game-desc">基于 Three.js 的第一人称 3D 射击游戏。对抗 AI 敌人，沉浸式生存体验。</p>
+                <a href="games/3d-shooter/index.html" class="play-btn">开始射击</a>
+            </div>
+
+            <!-- 赛车狂飙 -->
+            <div class="game-card">
+                <h2 class="game-title">赛车狂飙</h2>
+                <p class="game-desc">极速赛车体验，驾驶你的赛车在赛道上驰骋。</p>
+                <a href="games/racing/index.html" class="play-btn">极速狂飙</a>
+            </div>
+
+            <!-- 无尽跑酷 -->
+            <div class="game-card">
+                <h2 class="game-title">无尽跑酷</h2>
+                <p class="game-desc">经典的横版 2D 跑酷游戏。动态生成障碍物，挑战高分！</p>
+                <a href="games/parkour-game/index.html" class="play-btn">开始跑酷</a>
+            </div>
+
         </div>
-    </div>
+    </main>
 
     <footer>
-        <p>游戏中心 &copy; 2026</p>
+        <p>&copy; 2026 xjr-ai 小游戏中心</p>
     </footer>
 </body>
 </html>

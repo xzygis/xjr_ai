@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>丧尸生存基地 (3D版)</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- 引入 Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- 引入 OrbitControls -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+    <div id="game-container"></div>
+    
+    <!-- 顶部状态栏 -->
+    <div id="status-bar">
+        <div class="stat">幸存者数量: <span id="survivor-count">1,000,000,000,000</span></div>
+        <div class="stat">当前区域: <span id="current-area">主基地</span></div>
+        <div class="stat">生命值: <span id="health">100</span>%</div>
+    </div>
+
+    <!-- 右上角：玩家积分 -->
+    <div id="score-panel" style="position: absolute; top: 70px; right: 20px; z-index: 10; background: rgba(255,215,0,0.85); color: #000; padding: 10px 20px; border-radius: 8px; font-weight: bold; font-size: 1.2rem; border: 2px solid #d35400; box-shadow: 0 4px 8px rgba(0,0,0,0.3);">
+        我的积分: <span id="player-score">∞ (无限)</span>
+    </div>
+
+    <!-- 左侧：基地设施导航 -->
+    <div id="base-nav">
+        <h3>基地设施</h3>
+        <button onclick="if(window.game && window.game.teleport) window.game.teleport('主基地')">主基地</button>
+        <button onclick="if(window.game && window.game.teleport) window.game.teleport('宿舍')">宿舍</button>
+        <button onclick="if(window.game && window.game.teleport) window.game.teleport('武器库')">武器库</button>
+        <button onclick="if(window.game && window.game.teleport) window.game.teleport('游泳池')">游泳池</button>
+        <button onclick="if(window.game && window.game.teleport) window.game.teleport('火锅城')">火锅城</button>
+        <button onclick="if(window.game && window.game.teleport) window.game.teleport('训练场')">训练场</button>
+    </div>
+
+    <!-- 左下角：控制提示 -->
+    <div id="controls-hint">
+        <p>鼠标左键点击地面: 开矿车移动</p>
+        <p>1: 使用当前装备/医疗品</p>
+    </div>
+
+    <!-- 右下角：武器和特殊道具 -->
+    <div id="weapons-panel">
+        <h3>装备与道具</h3>
+        <div class="weapon-grid">
+            <button id="btn-hoverboard" onclick="window.game.useItem('hoverboard')">悬浮滑板</button>
+            <button id="btn-motorcycle" onclick="window.game.useItem('motorcycle')">三栖摩托车</button>
+            <button id="btn-minecar" onclick="window.game.useItem('minecar')">冰火矿车 (默认)</button>
+            
+            <hr style="border-color: #555;">
+            
+            <!-- 武器 -->
+            <button id="btn-ice-sword" onclick="window.game.useItem('ice-sword')">冰剑</button>
+            <button id="btn-fire-sword" onclick="window.game.useItem('fire-sword')">火剑</button>
+            <button id="btn-normal-sword" onclick="window.game.useItem('normal-sword')">普通剑</button>
+            <button id="btn-drill" onclick="window.game.useItem('drill')">多功能钻头</button>
+            <button id="btn-axe" onclick="window.game.useItem('axe')">消防斧</button>
+            <button id="btn-pickaxe" onclick="window.game.useItem('pickaxe')">消防镐</button>
+            
+            <hr style="border-color: #555;">
+            
+            <!-- 防具与医疗 -->
+            <button id="btn-shield" onclick="window.game.useItem('shield')">盾牌</button>
+            <button id="btn-armor" onclick="window.game.useItem('armor')">防弹衣</button>
+            <button id="btn-hazmat" onclick="window.game.useItem('hazmat')">防护服</button>
+            <button id="btn-gasmask" onclick="window.game.useItem('gasmask')">防毒面具</button>
+            <button id="btn-bandage" onclick="window.game.useItem('bandage')" style="background:#27ae60;">炸带(包扎)</button>
+            <button id="btn-medkit" onclick="window.game.useItem('medkit')" style="background:#2ecc71;">医疗包</button>
+            <button id="btn-pills" onclick="window.game.useItem('pills')" style="background:#16a085;">抗生素</button>
+        </div>
+    </div>
+
+    <!-- 宿舍内特殊设备面板 (默认隐藏) -->
+    <div id="dorm-panel" class="hidden panel">
+        <h3>宿舍设备</h3>
+        <button onclick="window.game.useFacility('食物模仿机')">食物模仿机</button>
+        <button onclick="window.game.useFacility('快乐可乐制造机')">快乐可乐制造机</button>
+        <button onclick="window.game.useFacility('纯净水制造机')">纯净水制造机</button>
+        <button onclick="window.game.useFacility('神龙大礼包制造机')">神龙大礼包制造机</button>
+    </div>
+
+    <!-- 矿车面板 (默认隐藏) -->
+    <div id="minecar-panel" class="hidden panel">
+        <h3>冰火矿车控制</h3>
+        <button onclick="if(window.game && window.game.minecarAction) window.game.minecarAction('horn')">按喇叭 (驱赶)</button>
+        <button onclick="if(window.game && window.game.minecarAction) window.game.minecarAction('build_road')">造路 (强制通行)</button>
+        <button onclick="if(window.game && window.game.useItem) window.game.useItem('minecar')">下车</button>
+    </div>
+
+    <!-- 提示信息弹窗 -->
+    <div id="message-toast" class="hidden">提示信息</div>
+
+    <script src="app.js"></script>
+</body>
+</html>
