@@ -1,0 +1,307 @@
+/* 全局样式 - 辐射主题 */
+:root {
+    --fallout-green: #2ecc71;
+    --fallout-dark: #1a1a1a;
+    --dirt-brown: #3e2723;
+    --rust-red: #8b0000;
+    --text-color: #dcdcdc;
+    --panel-bg: rgba(20, 30, 20, 0.9);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: var(--fallout-dark);
+    color: var(--text-color);
+    font-family: 'Courier New', Courier, monospace; /* 模拟老式终端 */
+    overflow: hidden;
+}
+
+#game-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+/* 顶部资源栏 */
+#top-bar {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    background-color: var(--panel-bg);
+    border-bottom: 2px solid var(--fallout-green);
+    padding: 10px 20px;
+    height: 60px;
+    box-shadow: 0 4px 6px rgba(0, 255, 0, 0.1);
+    z-index: 10;
+}
+
+.resource {
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--fallout-green);
+    text-shadow: 0 0 5px var(--fallout-green);
+}
+
+.resource .icon {
+    font-size: 1.5rem;
+}
+
+#btn-back {
+    background: var(--rust-red);
+    color: white;
+    border: 1px solid #ff4444;
+    padding: 8px 16px;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: bold;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+#btn-back:hover {
+    background: #ff4444;
+    box-shadow: 0 0 10px #ff4444;
+}
+
+/* 主游戏区域 */
+#base-view {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* 地面 - 辐射废土 */
+#surface {
+    height: 150px;
+    background: linear-gradient(to bottom, #4a4a4a, #2a2a2a);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-bottom: 5px solid #111;
+}
+
+.wasteland {
+    text-align: center;
+    color: #ffaa00;
+    text-shadow: 0 0 10px #ffaa00;
+    animation: flicker 3s infinite;
+}
+
+@keyframes flicker {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+    80% { opacity: 0.9; }
+}
+
+/* 地下结构 */
+#underground {
+    flex: 1;
+    background-color: var(--dirt-brown);
+    position: relative;
+    display: flex;
+    justify-content: center;
+    padding: 20px 0;
+    min-height: 500px;
+}
+
+.base-structure {
+    display: flex;
+    width: 80%;
+    max-width: 800px;
+    background: #222;
+    border: 3px solid #444;
+    box-shadow: 0 0 20px rgba(0,0,0,0.8);
+}
+
+.elevator-shaft {
+    width: 60px;
+    background: #111;
+    border-right: 3px solid #444;
+    position: relative;
+    display: flex;
+    justify-content: center;
+}
+
+.elevator-car {
+    width: 40px;
+    height: 60px;
+    background: #555;
+    border: 2px solid #888;
+    position: absolute;
+    top: 20px;
+    transition: top 1s ease-in-out;
+}
+
+.rooms-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    padding: 15px;
+}
+
+/* 房间样式 */
+.room {
+    background: #2a2a2a;
+    border: 2px solid #555;
+    border-radius: 5px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    position: relative;
+    overflow: hidden;
+}
+
+.room::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
+    pointer-events: none;
+}
+
+.canteen { border-color: #e67e22; }
+.shower { border-color: #3498db; }
+.dorm { border-color: #9b59b6; }
+
+.room-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px dashed #666;
+    padding-bottom: 5px;
+}
+
+.room-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: #ddd;
+}
+
+.room-stats {
+    font-size: 0.9rem;
+    color: #aaa;
+}
+
+.room-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 5px;
+}
+
+button {
+    background: #333;
+    color: var(--fallout-green);
+    border: 1px solid var(--fallout-green);
+    padding: 5px 10px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.2s;
+}
+
+button:hover {
+    background: var(--fallout-green);
+    color: #000;
+}
+
+button:disabled {
+    background: #222;
+    color: #555;
+    border-color: #555;
+    cursor: not-allowed;
+}
+
+.room-progress-bar {
+    width: 100%;
+    height: 8px;
+    background: #111;
+    border-radius: 4px;
+    margin-top: 5px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--fallout-green);
+    transition: width 0.1s linear;
+}
+
+.canteen .progress-fill { background: #e67e22; }
+.shower .progress-fill { background: #3498db; }
+.dorm .progress-fill { background: #9b59b6; }
+
+/* 底部日志 */
+#log-bar {
+    height: 40px;
+    background: var(--panel-bg);
+    border-top: 2px solid var(--fallout-green);
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    font-size: 0.9rem;
+    color: #aaa;
+}
+
+#event-log {
+    width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* 弹窗 */
+.hidden {
+    display: none !important;
+}
+
+#game-over-modal {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+}
+
+.modal-content {
+    background: #222;
+    border: 3px solid var(--rust-red);
+    padding: 30px;
+    text-align: center;
+    border-radius: 8px;
+    color: white;
+}
+
+.modal-content h2 {
+    color: var(--rust-red);
+    margin-bottom: 15px;
+}
+
+.modal-content button {
+    margin-top: 20px;
+    background: var(--rust-red);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    font-size: 1.1rem;
+}
+
+.modal-content button:hover {
+    background: #ff4444;
+}
