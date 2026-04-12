@@ -1,20 +1,20 @@
 {
   "pages": [
     {
-      "page_id": "battle_royale_shooter",
-      "page_name": "枪战吃鸡战场",
-      "page_description": "生存枪战地图，含金币积分商店与机动装备系统",
+      "page_id": "xiangqi_game",
+      "page_name": "中国象棋游戏",
+      "page_description": "单页中国象棋对弈界面，支持完整规则与胜负判定",
       "layout_type": "single_page",
       "sections": [
         {
-          "name": "battlefield",
+          "name": "game_board",
           "type": "content",
-          "components": ["battle_canvas", "hud", "shop_buttons", "start_panel"],
+          "components": ["chess_board", "piece_panel", "game_state", "history"],
           "responsive_behavior": "stack"
         }
       ],
-      "color_scheme": "dark",
-      "primary_actions": ["开始战斗", "购买装备", "持续生存"]
+      "color_scheme": "light",
+      "primary_actions": ["走子", "重新开始"]
     }
   ],
   "navigation": {
@@ -22,9 +22,9 @@
     "links_between_pages": []
   },
   "canvas_layout": {
-    "battle_royale_shooter": {
+    "xiangqi_game": {
       "width": 1280,
-      "height": 860
+      "height": 920
     }
   }
 }
