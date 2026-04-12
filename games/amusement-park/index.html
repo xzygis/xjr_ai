@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>欢乐游乐园 - Amusement Park Tycoon</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="game-container">
+        <header id="top-bar">
+            <div class="stat-box"><span class="icon">💰</span><span id="money-display">5000</span></div>
+            <div class="stat-box"><span class="icon">👥</span><span id="visitors-display">0</span></div>
+            <div class="stat-box"><span class="icon">⭐</span><span id="rating-display">0.0</span></div>
+            <div class="stat-box"><span class="icon">📅</span><span id="day-display">Day 1</span></div>
+        </header>
+        <main id="main-area">
+            <canvas id="game-canvas"></canvas>
+            <aside id="build-menu">
+                <h2>游乐园管理与建设</h2>
+                <div class="tabs">
+                    <button class="tab-btn active" data-tab="rides">游乐设施</button>
+                    <button class="tab-btn" data-tab="paths">道路与装饰</button>
+                    <button class="tab-btn" data-tab="manage">管理</button>
+                </div>
+                <div id="tab-rides" class="tab-content active"><ul id="rides-list" class="build-list"></ul></div>
+                <div id="tab-paths" class="tab-content">
+                    <ul class="build-list">
+                        <li class="build-item" data-type="path" data-id="path"><span class="item-icon">🛤️</span><div class="item-info"><h3>步行道</h3><p>$10</p></div></li>
+                        <li class="build-item" data-type="scenery" data-id="tree"><span class="item-icon">🌳</span><div class="item-info"><h3>树木</h3><p>$50</p></div></li>
+                        <li class="build-item" data-type="delete" data-id="delete"><span class="item-icon">🗑️</span><div class="item-info"><h3>拆除工具</h3><p>免费</p></div></li>
+                    </ul>
+                </div>
+                <div id="tab-manage" class="tab-content">
+                    <div class="manage-panel">
+                        <h3>门票价格</h3>
+                        <div class="control-group"><button id="btn-ticket-down">-</button><span id="ticket-price-display">$10</span><button id="btn-ticket-up">+</button></div>
+                        <h3>营销宣传</h3>
+                        <button id="btn-marketing" class="action-btn">投放广告 ($500)</button>
+                        <p class="desc">增加游客产生率，持续1天</p>
+                        <h3>财务报表</h3>
+                        <p>总收入: <span id="total-income">$0</span></p>
+                        <p>总支出: <span id="total-expense">$0</span></p>
+                    </div>
+                </div>
+            </aside>
+        </main>
+        <div id="ride-modal" class="modal hidden">
+            <div class="modal-content">
+                <span class="close-btn">&times;</span>
+                <h2 id="modal-ride-name">Ride Name</h2>
+                <p id="modal-ride-desc">Description</p>
+                <div class="modal-stats">
+                    <p>运行状态: <span id="modal-ride-status">运行中</span></p>
+                    <p>游客人数: <span id="modal-ride-occupancy">0/10</span></p>
+                    <p>总收益: <span id="modal-ride-profit">$0</span></p>
+                    <p>维护成本: <span id="modal-ride-upkeep">$0/天</span></p>
+                </div>
+                <div class="modal-actions">
+                    <button id="btn-repair" class="action-btn">维修 ($100)</button>
+                    <button id="btn-demolish" class="action-btn danger">拆除</button>
+                </div>
+            </div>
+        </div>
+        <div id="toast-container"></div>
+    </div>
+    <script src="js/audio.js"></script>
+    <script src="js/data.js"></script>
+    <script src="js/engine.js"></script>
+    <script src="js/economy.js"></script>
+    <script src="js/visitors.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
