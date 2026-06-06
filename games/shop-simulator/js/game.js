@@ -86,7 +86,7 @@ function updateUI() {
 
 // 旅游团按钮
 document.getElementById('tour-bus-btn').addEventListener('click', () => {
-    const count = Math.floor(Math.random() * (1000 - 444 + 1)) + 444; 
+    const count = Math.floor(Math.random() * (100 - 2 + 1)) + 2; 
     
     const notice = document.createElement('div');
     notice.textContent = `🚌 旅游团到达！${count} 人进入商场！`;
@@ -343,9 +343,7 @@ function joinQueue(customer) {
     updateQueuePositions(targetQueue);
 
     if (queues[targetQueue].length === 1) {
-        if (targetQueue !== 0) {
-            processCheckout(customer, targetQueue);
-        }
+        processCheckout(customer, targetQueue);
     }
 }
 

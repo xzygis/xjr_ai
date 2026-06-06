@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>走路大冒险</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #1a1a2e; overflow: hidden; font-family: 'PingFang SC', sans-serif; }
+canvas { display: block; }
+#ui {
+  position: fixed; top: 0; left: 0; width: 100%; pointer-events: none; z-index: 10;
+  display: flex; justify-content: space-between; padding: 12px 20px;
+}
+#ui > div { pointer-events: auto; }
+.hud {
+  background: rgba(0,0,0,0.6); border-radius: 12px; padding: 8px 16px;
+  color: #fff; font-size: 14px; line-height: 1.8;
+}
+.hud b { color: #ffd700; }
+#msg {
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  background: rgba(0,0,0,0.85); color: #fff; padding: 30px 50px;
+  border-radius: 16px; font-size: 22px; text-align: center;
+  z-index: 100; display: none; border: 2px solid #ffd700;
+}
+#msg button {
+  margin-top: 16px; padding: 10px 30px; font-size: 16px;
+  background: #ffd700; color: #1a1a2e; border: none; border-radius: 8px;
+  cursor: pointer; font-weight: bold;
+}
+#msg button:hover { background: #ffed4a; }
+#petPanel {
+  position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%);
+  background: rgba(0,0,0,0.7); border-radius: 12px; padding: 8px 16px;
+  color: #fff; font-size: 13px; z-index: 10;
+}
+#controls {
+  position: fixed; bottom: 12px; right: 12px; z-index: 10;
+  background: rgba(0,0,0,0.6); border-radius: 12px; padding: 10px 14px;
+  color: #aaa; font-size: 12px; line-height: 1.7;
+}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="ui">
+  <div class="hud" id="hudLeft"></div>
+  <div class="hud" id="hudRight"></div>
+</div>
+<div id="petPanel"></div>
+<div id="controls">
+  操作：U左 O右 K前 J后<br>
+  空格：抽宠物蛋
+</div>
+<div id="msg">
+  <div id="msgText"></div>
+  <button id="msgBtn" onclick="closeMsg()">确定</button>
+</div>
+
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// ============ 游戏状态 ============
+const G = {
+  scrollY: 0,
+  trophies: 0,
+  pets: [],
+  speedBonus: 0,
+  fallen: false,
+  fallenTimer: 0,
+  won: false,
+  pendingEgg: false,
+  knockedNPCs: new Set(),
+  level: 1,
+};
+
+// ============ 地图生成 ============
+const TILE = 40;
+const MAP_COLS = 20;
+const SECTIONS = [];
+let MAP_ROWS = 0;
+
+function generateMap() {
+  SECTIONS.length = 0;
+  MAP_ROWS = 0;
+
+  // 1. 山顶起点
+  addSection('mountain_top', 12);
+  // 2. 下坡
+  addSection('downhill', 18);
+  // 3. 平地过渡
+  addSection('flat', 8);
+  // 4. 独木桥
+  addSection('bridge', 14);
+  // 5. 山川地形
+  addSection('mountains', 20);
+  // 6. 废墟区
+  addSection('ruins', 22);
+  // 7. 坑洞路障区
+  addSection('pits', 20);
+  // 8. 终点
+  addSection('finish', 6);
+
+  buildTerrain();
+}
+
+function addSection(type, rows) {
+  SECTIONS.push({ type, startRow: MAP_ROWS, rows });
+  MAP_ROWS += rows;
+}
+
+// 地形数据: 0=地面, 1=墙壁, 2=坑洞, 3=路障, 4=独木桥, 5=终点, 6=山坡, 7=废墟地面
+const terrain = [];
+const wallColor = [];
+
+function buildTerrain() {
+  terrain.length = 0;
+  for (let r = 0; r < MAP_ROWS; r++) {
+    terrain[r] = [];
+    for (let c = 0; c < MAP_COLS; c++) {
+      terrain[r][c] = 0;
+    }
+  }
+
+  for (const sec of SECTIONS) {
+    const { type, startRow, rows } = sec;
+    switch (type) {
+      case 'mountain_top': buildMountainTop(startRow, rows); break;
+      case 'downhill': buildDownhill(startRow, rows); break;
+      case 'flat': buildFlat(startRow, rows); break;
+      case 'bridge': buildBridge(startRow, rows); break;
+      case 'mountains': buildMountains(startRow, rows); break;
+      case 'ruins': buildRuins(startRow, rows); break;
+      case 'pits': buildPits(startRow, rows); break;
+      case 'finish': buildFinish(startRow, rows); break;
+    }
+  }
+}
+
+function fillWalls(startRow, rows) {
+  for (let r = startRow; r < startRow + rows; r++) {
+    terrain[r][0] = 1;
+    terrain[r][MAP_COLS - 1] = 1;
+  }
+}
+
+function buildMountainTop(sr, rows) {
+  fillWalls(sr, rows);
+  for (let r = sr; r < sr + rows; r++) {
+    for (let c = 1; c < MAP_COLS - 1; c++) {
+      terrain[r][c] = 6;
+    }
+  }
+  // 一些装饰石头(墙壁)
+  addRandomWalls(sr, rows, 6, [3, MAP_COLS - 4]);
+}
+
+function buildDownhill(sr, rows) {
+  fillWalls(sr, rows);
+  for (let r = sr; r < sr + rows; r++) {
+    for (let c = 1; c < MAP_COLS - 1; c++) {
+      terrain[r][c] = 6;
+    }
+    // 下坡两侧逐渐变窄再变宽
+    const narrow = Math.floor(Math.sin((r - sr) / rows * Math.PI) * 3);
+    for (let i = 1; i <= narrow; i++) {
+      terrain[r][i] = 1;
+      terrain[r][MAP_COLS - 1 - i] = 1;
+    }
+  }
+}
+
+function buildFlat(sr, rows) {
+  fillWalls(sr, rows);
+}
+
+function buildBridge(sr, rows) {
+  for (let r = sr; r < sr + rows; r++) {
+    for (let c = 0; c < MAP_COLS; c++) {
+      terrain[r][c] = 2; // 全是水/坑
+    }
+    // 中间3格是桥
+    const bridgeStart = 8;
+    const bridgeEnd = 11;
+    for (let c = bridgeStart; c <= bridgeEnd; c++) {
+      terrain[r][c] = 4;
+    }
+    // 桥两边路障
+    terrain[r][bridgeStart - 1] = 3;
+    terrain[r][bridgeEnd + 1] = 3;
+  }
+}
+
+function buildMountains(sr, rows) {
+  fillWalls(sr, rows);
+  for (let r = sr; r < sr + rows; r++) {
+    for (let c = 1; c < MAP_COLS - 1; c++) {
+      terrain[r][c] = 6;
+    }
+  }
+  // 随机大石块和窄道
+  for (let i = 0; i < 12; i++) {
+    const r = sr + 2 + Math.floor(Math.random() * (rows - 4));
+    const c = 2 + Math.floor(Math.random() * (MAP_COLS - 4));
+    terrain[r][c] = 1;
+    if (Math.random() > 0.5 && c + 1 < MAP_COLS - 1) terrain[r][c + 1] = 1;
+  }
+}
+
+function buildRuins(sr, rows) {
+  fillWalls(sr, rows);
+  for (let r = sr; r < sr + rows; r++) {
+    for (let c = 1; c < MAP_COLS - 1; c++) {
+      terrain[r][c] = 7;
+    }
+  }
+  // 废墟碎片(墙壁)
+  for (let i = 0; i < 18; i++) {
+    const r = sr + 1 + Math.floor(Math.random() * (rows - 2));
+    const c = 2 + Math.floor(Math.random() * (MAP_COLS - 4));
+    terrain[r][c] = 1;
+  }
+  // 坑洞+路障
+  for (let i = 0; i < 8; i++) {
+    const r = sr + 1 + Math.floor(Math.random() * (rows - 2));
+    const c = 2 + Math.floor(Math.random() * (MAP_COLS - 4));
+    if (terrain[r][c] !== 1) {
+      terrain[r][c] = 2;
+      // 路障围住坑洞
+      for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1]]) {
+        const nr = r + dr, nc = c + dc;
+        if (nr >= sr && nr < sr + rows && nc >= 1 && nc < MAP_COLS - 1 && terrain[nr][nc] !== 1 && terrain[nr][nc] !== 2) {
+          terrain[nr][nc] = 3;
+        }
+      }
+    }
+  }
+}
+
+function buildPits(sr, rows) {
+  fillWalls(sr, rows);
+  // 大量坑洞+路障
+  for (let i = 0; i < 15; i++) {
+    const r = sr + 1 + Math.floor(Math.random() * (rows - 2));
+    const c = 2 + Math.floor(Math.random() * (MAP_COLS - 4));
+    terrain[r][c] = 2;
+    for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1]]) {
+      const nr = r + dr, nc = c + dc;
+      if (nr >= sr && nr < sr + rows && nc >= 1 && nc < MAP_COLS - 1 && terrain[nr][nc] === 0) {
+        terrain[nr][nc] = 3;
+      }
+    }
+  }
+}
+
+function buildFinish(sr, rows) {
+  fillWalls(sr, rows);
+  for (let r = sr; r < sr + rows; r++) {
+    for (let c = 1; c < MAP_COLS - 1; c++) {
+      terrain[r][c] = r === sr + rows - 2 ? 5 : 0;
+    }
+  }
+}
+
+function addRandomWalls(sr, rows, count, colRange) {
+  for (let i = 0; i < count; i++) {
+    const r = sr + 1 + Math.floor(Math.random() * (rows - 2));
+    const c = colRange[0] + Math.floor(Math.random() * (colRange[1] - colRange[0]));
+    if (terrain[r][c] !== 1) terrain[r][c] = 1;
+  }
+}
+
+// 确保从起点到终点有通路 (简单验证)
+function ensurePath() {
+  // 简单处理：确保玩家起点列附近没有完全堵死
+  const startR = 2;
+  const startC = Math.floor(MAP_COLS / 2);
+  terrain[startR][startC] = 0;
+  terrain[startR][startC - 1] = terrain[startR][startC - 1] === 1 ? 0 : terrain[startR][startC - 1];
+  terrain[startR][startC + 1] = terrain[startR][startC + 1] === 1 ? 0 : terrain[startR][startC + 1];
+}
+
+// ============ 玩家 ============
+const player = {
+  x: 0, y: 0, w: 30, h: 30,
+  baseSpeed: 2.5,
+  get speed() { return this.baseSpeed * (1 + G.speedBonus); },
+  color: '#00d4ff',
+  dirX: 0, dirY: 0,
+};
+
+function resetPlayer() {
+  player.x = Math.floor(MAP_COLS / 2) * TILE + 5;
+  player.y = 2 * TILE + 5;
+  G.fallen = false;
+  G.fallenTimer = 0;
+  G.won = false;
+  G.scrollY = 0;
+  G.knockedNPCs.clear();
+}
+
+// ============ NPC ============
+const npcs = [];
+
+function spawnNPCs() {
+  npcs.length = 0;
+  const npcColors = ['#ff6b6b', '#ffa94d', '#69db7c', '#da77f2', '#ffd43b', '#74c0fc', '#f783ac', '#a9e34b'];
+  for (let i = 0; i < 60; i++) {
+    let r, c, attempts = 0;
+    do {
+      r = 4 + Math.floor(Math.random() * (MAP_ROWS - 8));
+      c = 2 + Math.floor(Math.random() * (MAP_COLS - 4));
+      attempts++;
+    } while (attempts < 50 && (terrain[r][c] !== 0 && terrain[r][c] !== 6 && terrain[r][c] !== 7 && terrain[r][c] !== 4));
+
+    if (terrain[r][c] === 0 || terrain[r][c] === 6 || terrain[r][c] === 7 || terrain[r][c] === 4) {
+      npcs.push({
+        x: c * TILE + 5,
+        y: r * TILE + 5,
+        w: 28, h: 28,
+        color: npcColors[i % npcColors.length],
+        fallen: false,
+        fallenTimer: 0,
+        vx: (Math.random() - 0.5) * 1.2,
+        vy: (Math.random() - 0.5) * 1.2,
+        moveTimer: 0,
+        moveInterval: 60 + Math.floor(Math.random() * 120),
+      });
+    }
+  }
+}
+
+// ============ 输入 ============
+const keys = {};
+window.addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true; });
+window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+
+// ============ 渲染颜色 ============
+function tileColor(type, r, c) {
+  switch (type) {
+    case 0: return '#4a5568'; // 普通地面
+    case 1: return '#8B4513'; // 墙壁/石头
+    case 2: return '#1a1a2e'; // 坑洞(深色)
+    case 3: return '#ff4444'; // 路障(红白条)
+    case 4: return '#a0522d'; // 独木桥(木色)
+    case 5: return '#ffd700'; // 终点(金色)
+    case 6: {
+      // 山地渐变
+      const shade = 60 + ((r + c) % 3) * 15;
+      return `rgb(${shade}, ${shade + 30}, ${shade - 10})`;
+    }
+    case 7: {
+      // 废墟
+      const s = 55 + ((r * 3 + c * 7) % 4) * 10;
+      return `rgb(${s + 20}, ${s + 10}, ${s})`;
+    }
+    default: return '#4a5568';
+  }
+}
+
+// ============ 碰撞 ============
+function rectOverlap(a, b) {
+  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+}
+
+function getTileAt(px, py) {
+  const c = Math.floor(px / TILE);
+  const r = Math.floor(py / TILE);
+  if (r < 0 || r >= MAP_ROWS || c < 0 || c >= MAP_COLS) return 1;
+  return terrain[r][c];
+}
+
+function canMoveTo(x, y, w, h) {
+  // 检查四角
+  const corners = [
+    [x, y], [x + w - 1, y], [x, y + h - 1], [x + w - 1, y + h - 1]
+  ];
+  for (const [px, py] of corners) {
+    const t = getTileAt(px, py);
+    if (t === 1 || t === 2 || t === 3) return false;
+  }
+  return true;
+}
+
+function isWallOrBarrier(x, y, w, h) {
+  const corners = [
+    [x, y], [x + w - 1, y], [x, y + h - 1], [x + w - 1, y + h - 1]
+  ];
+  for (const [px, py] of corners) {
+    const t = getTileAt(px, py);
+    if (t === 1 || t === 3) return 'wall';
+    if (t === 2) return 'pit';
+  }
+  return null;
+}
+
+function isFinish(x, y, w, h) {
+  const cx = x + w / 2, cy = y + h / 2;
+  const t = getTileAt(cx, cy);
+  return t === 5;
+}
+
+// ============ 更新 ============
+function update() {
+  if (G.won || G.pendingEgg) return;
+
+  // 玩家倒地恢复
+  if (G.fallen) {
+    G.fallenTimer--;
+    if (G.fallenTimer <= 0) G.fallen = false;
+    return;
+  }
+
+  // 移动
+  let dx = 0, dy = 0;
+  if (keys['k']) dy = -player.speed; // 前(上)
+  if (keys['j']) dy = player.speed;  // 后(下)
+  if (keys['u']) dx = -player.speed; // 左
+  if (keys['o']) dx = player.speed;  // 右
+
+  // 分轴移动
+  if (dx !== 0) {
+    const nx = player.x + dx;
+    if (canMoveTo(nx, player.y, player.w, player.h)) {
+      player.x = nx;
+    } else {
+      // 撞墙倒地
+      const hit = isWallOrBarrier(nx, player.y, player.w, player.h);
+      if (hit === 'wall') {
+        G.fallen = true;
+        G.fallenTimer = 40;
+      }
+    }
+  }
+  if (dy !== 0) {
+    const ny = player.y + dy;
+    if (canMoveTo(player.x, ny, player.w, player.h)) {
+      player.y = ny;
+    } else {
+      const hit = isWallOrBarrier(player.x, ny, player.w, player.h);
+      if (hit === 'wall') {
+        G.fallen = true;
+        G.fallenTimer = 40;
+      }
+    }
+  }
+
+  // NPC碰撞
+  for (let i = 0; i < npcs.length; i++) {
+    const npc = npcs[i];
+    if (npc.fallen) continue;
+    if (rectOverlap(player, npc)) {
+      npc.fallen = true;
+      npc.fallenTimer = 180;
+      G.knockedNPCs.add(i);
+    }
+  }
+
+  // 终点检测
+  if (isFinish(player.x, player.y, player.w, player.h)) {
+    G.won = true;
+    G.trophies++;
+    G.pendingEgg = true;
+    showMsg(`🏆 恭喜到达终点！获得奖杯 x${G.trophies}<br><br>按空格键抽取宠物蛋！`, false);
+  }
+
+  // NPC自主移动
+  for (const npc of npcs) {
+    if (npc.fallen) {
+      npc.fallenTimer--;
+      if (npc.fallenTimer <= 0) npc.fallen = false;
+      continue;
+    }
+    npc.moveTimer++;
+    if (npc.moveTimer >= npc.moveInterval) {
+      npc.moveTimer = 0;
+      npc.vx = (Math.random() - 0.5) * 1.5;
+      npc.vy = (Math.random() - 0.5) * 1.5;
+    }
+    const nx = npc.x + npc.vx;
+    const ny = npc.y + npc.vy;
+    if (canMoveTo(nx, ny, npc.w, npc.h)) {
+      npc.x = nx;
+      npc.y = ny;
+    } else {
+      npc.vx = -npc.vx;
+      npc.vy = -npc.vy;
+    }
+  }
+
+  // 镜头跟随
+  const targetScroll = player.y - canvas.height / 2;
+  G.scrollY += (targetScroll - G.scrollY) * 0.08;
+}
+
+// ============ 渲染 ============
+function render() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // 地图偏移让玩家居中
+  const offsetX = (canvas.width - MAP_COLS * TILE) / 2;
+  const offsetY = -G.scrollY;
+
+  ctx.save();
+  ctx.translate(offsetX, offsetY);
+
+  // 只渲染可见行
+  const startR = Math.max(0, Math.floor(G.scrollY / TILE) - 2);
+  const endR = Math.min(MAP_ROWS, Math.ceil((G.scrollY + canvas.height) / TILE) + 2);
+
+  // 地形
+  for (let r = startR; r < endR; r++) {
+    for (let c = 0; c < MAP_COLS; c++) {
+      const t = terrain[r][c];
+      ctx.fillStyle = tileColor(t, r, c);
+      ctx.fillRect(c * TILE, r * TILE, TILE, TILE);
+
+      // 路障条纹
+      if (t === 3) {
+        ctx.fillStyle = '#ffffff';
+        for (let s = 0; s < TILE; s += 8) {
+          ctx.fillRect(c * TILE + s, r * TILE, 4, TILE);
+        }
+        ctx.fillStyle = '#ff4444';
+        for (let s = 4; s < TILE; s += 8) {
+          ctx.fillRect(c * TILE + s, r * TILE, 4, TILE);
+        }
+      }
+
+      // 坑洞标记
+      if (t === 2) {
+        ctx.fillStyle = '#0d0d1a';
+        ctx.beginPath();
+        ctx.arc(c * TILE + TILE / 2, r * TILE + TILE / 2, TILE / 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // 终点金色闪光
+      if (t === 5) {
+        ctx.fillStyle = 'rgba(255,255,255,' + (0.3 + Math.sin(Date.now() / 200) * 0.2) + ')';
+        ctx.fillRect(c * TILE, r * TILE, TILE, TILE);
+        ctx.fillStyle = '#fff';
+        ctx.font = '24px serif';
+        ctx.fillText('🏆', c * TILE + 8, r * TILE + 30);
+      }
+
+      // 独木桥纹理
+      if (t === 4) {
+        ctx.strokeStyle = '#8B6914';
+        ctx.lineWidth = 1;
+        for (let s = 0; s < TILE; s += 8) {
+          ctx.beginPath();
+          ctx.moveTo(c * TILE, r * TILE + s);
+          ctx.lineTo(c * TILE + TILE, r * TILE + s);
+          ctx.stroke();
+        }
+      }
+    }
+  }
+
+  // 区域标签
+  for (const sec of SECTIONS) {
+    const labelY = sec.startRow * TILE - 4;
+    if (labelY > G.scrollY - 40 && labelY < G.scrollY + canvas.height) {
+      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+      ctx.font = 'bold 13px PingFang SC, sans-serif';
+      const labels = {
+        mountain_top: '⛰️ 山顶起点',
+        downhill: '⬇️ 下坡路段',
+        flat: '➡️ 平地过渡',
+        bridge: '🌉 独木桥',
+        mountains: '🏔️ 山川险路',
+        ruins: '🏚️ 废墟区',
+        pits: '⚠️ 坑洞路障区',
+        finish: '🏁 终点'
+      };
+      ctx.fillText(labels[sec.type] || '', TILE + 4, labelY + 14);
+    }
+  }
+
+  // NPC
+  for (const npc of npcs) {
+    if (npc.y + npc.h < G.scrollY - 50 || npc.y > G.scrollY + canvas.height + 50) continue;
+    ctx.save();
+    if (npc.fallen) {
+      ctx.globalAlpha = 0.5;
+      ctx.translate(npc.x + npc.w / 2, npc.y + npc.h / 2);
+      ctx.rotate(Math.PI / 2);
+      ctx.translate(-(npc.x + npc.w / 2), -(npc.y + npc.h / 2));
+    }
+    // 身体
+    ctx.fillStyle = npc.color;
+    ctx.beginPath();
+    ctx.arc(npc.x + npc.w / 2, npc.y + npc.h / 2 + 4, npc.w / 2 - 2, 0, Math.PI * 2);
+    ctx.fill();
+    // 头
+    ctx.fillStyle = '#ffe0bd';
+    ctx.beginPath();
+    ctx.arc(npc.x + npc.w / 2, npc.y + 8, 8, 0, Math.PI * 2);
+    ctx.fill();
+    // 眼睛
+    ctx.fillStyle = '#333';
+    ctx.beginPath();
+    ctx.arc(npc.x + npc.w / 2 - 3, npc.y + 7, 1.5, 0, Math.PI * 2);
+    ctx.arc(npc.x + npc.w / 2 + 3, npc.y + 7, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+    if (npc.fallen) {
+      // 倒地的 X 眼
+      ctx.strokeStyle = '#333';
+      ctx.lineWidth = 1.5;
+      for (const ox of [-3, 3]) {
+        ctx.beginPath();
+        ctx.moveTo(npc.x + npc.w/2 + ox - 2, npc.y + 5);
+        ctx.lineTo(npc.x + npc.w/2 + ox + 2, npc.y + 9);
+        ctx.moveTo(npc.x + npc.w/2 + ox + 2, npc.y + 5);
+        ctx.lineTo(npc.x + npc.w/2 + ox - 2, npc.y + 9);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+
+  // 玩家
+  ctx.save();
+  if (G.fallen) {
+    ctx.globalAlpha = 0.6;
+    ctx.translate(player.x + player.w / 2, player.y + player.h / 2);
+    ctx.rotate(Math.PI / 2);
+    ctx.translate(-(player.x + player.w / 2), -(player.y + player.h / 2));
+  }
+  // 光环
+  if (G.pets.length > 0) {
+    ctx.strokeStyle = `hsl(${Date.now() / 10 % 360}, 80%, 60%)`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(player.x + player.w / 2, player.y + player.h / 2, player.w / 2 + 4, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  // 身体
+  ctx.fillStyle = player.color;
+  ctx.beginPath();
+  ctx.arc(player.x + player.w / 2, player.y + player.h / 2 + 4, player.w / 2 - 2, 0, Math.PI * 2);
+  ctx.fill();
+  // 头
+  ctx.fillStyle = '#ffe0bd';
+  ctx.beginPath();
+  ctx.arc(player.x + player.w / 2, player.y + 8, 9, 0, Math.PI * 2);
+  ctx.fill();
+  // 眼睛
+  ctx.fillStyle = '#222';
+  ctx.beginPath();
+  ctx.arc(player.x + player.w / 2 - 3, player.y + 7, 2, 0, Math.PI * 2);
+  ctx.arc(player.x + player.w / 2 + 3, player.y + 7, 2, 0, Math.PI * 2);
+  ctx.fill();
+  // 嘴巴
+  ctx.strokeStyle = '#c44';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(player.x + player.w / 2, player.y + 12, 3, 0, Math.PI);
+  ctx.stroke();
+  // 标签
+  ctx.fillStyle = '#00d4ff';
+  ctx.font = 'bold 10px PingFang SC';
+  ctx.textAlign = 'center';
+  ctx.fillText('我', player.x + player.w / 2, player.y - 4);
+  ctx.textAlign = 'start';
+  ctx.restore();
+
+  // 宠物跟随
+  for (let i = 0; i < G.pets.length; i++) {
+    const pet = G.pets[i];
+    const angle = Date.now() / 1000 + i * (Math.PI * 2 / G.pets.length);
+    const px = player.x + player.w / 2 + Math.cos(angle) * 24 - 8;
+    const py = player.y + player.h / 2 + Math.sin(angle) * 24 - 8;
+    ctx.font = '16px serif';
+    ctx.fillText(pet.emoji, px, py + 14);
+  }
+
+  ctx.restore();
+
+  // HUD
+  document.getElementById('hudLeft').innerHTML =
+    `关卡: <b>${G.level}</b> | 奖杯: <b>${G.trophies}</b> | 撞倒: <b>${G.knockedNPCs.size}</b>`;
+  document.getElementById('hudRight').innerHTML =
+    `速度: <b>${(player.speed).toFixed(1)}</b> | 宠物: <b>${G.pets.length}</b> | 加速: <b>+${(G.speedBonus * 100).toFixed(0)}%</b>`;
+  document.getElementById('petPanel').innerHTML = G.pets.length > 0 ?
+    '宠物: ' + G.pets.map(p => `${p.emoji} ${p.name}`).join(' | ') :
+    '暂无宠物 (到达终点获得奖杯可抽取)';
+}
+
+// ============ 消息弹窗 ============
+function showMsg(html, showBtn = true) {
+  document.getElementById('msgText').innerHTML = html;
+  document.getElementById('msg').style.display = 'block';
+  document.getElementById('msgBtn').style.display = showBtn ? 'inline-block' : 'none';
+}
+
+function closeMsg() {
+  document.getElementById('msg').style.display = 'none';
+  if (G.won && !G.pendingEgg) {
+    nextLevel();
+  }
+}
+
+// 宠物蛋抽取
+const PET_POOL = [
+  { emoji: '🐱', name: '小猫咪' },
+  { emoji: '🐶', name: '小狗狗' },
+  { emoji: '🐰', name: '小兔子' },
+  { emoji: '🦊', name: '小狐狸' },
+  { emoji: '🐼', name: '熊猫宝宝' },
+  { emoji: '🐲', name: '小龙仔' },
+  { emoji: '🦄', name: '独角兽' },
+  { emoji: '🐸', name: '小青蛙' },
+  { emoji: '🦅', name: '雄鹰' },
+  { emoji: '🐧', name: '小企鹅' },
+  { emoji: '🦁', name: '小狮子' },
+  { emoji: '🐯', name: '小老虎' },
+];
+
+window.addEventListener('keydown', e => {
+  if (e.code === 'Space' && G.pendingEgg) {
+    e.preventDefault();
+    const pet = PET_POOL[Math.floor(Math.random() * PET_POOL.length)];
+    G.pets.push(pet);
+    G.speedBonus += 1.0; // +100%
+    G.pendingEgg = false;
+    showMsg(`🥚 宠物蛋孵化成功！<br><br>获得: ${pet.emoji} <b>${pet.name}</b><br>速度 +100%！当前速度加成: +${(G.speedBonus * 100).toFixed(0)}%`, true);
+  }
+});
+
+function nextLevel() {
+  G.level++;
+  G.won = false;
+  G.pendingEgg = false;
+  generateMap();
+  ensurePath();
+  resetPlayer();
+  spawnNPCs();
+}
+
+// ============ 主循环 ============
+function gameLoop() {
+  update();
+  render();
+  requestAnimationFrame(gameLoop);
+}
+
+// 初始化
+generateMap();
+ensurePath();
+resetPlayer();
+spawnNPCs();
+gameLoop();
+</script>
+</body>
+</html>
