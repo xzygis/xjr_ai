@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>滚铁球 - Rolling Ball</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <canvas id="game-canvas"></canvas>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div class="hud-left">
+      <span id="hud-level">关卡 1</span>
+      <span id="hud-layer" style="display:none;color:#ff8844;font-size:14px;"></span>
+    </div>
+    <div class="hud-right">
+      <span id="hud-size">铁球等级: 1</span>
+    </div>
+  </div>
+
+  <!-- Speed bar -->
+  <div id="speed-bar-wrap">
+    <div id="speed-bar"></div>
+  </div>
+
+  <!-- Start Screen -->
+  <div id="start-screen" class="screen-overlay">
+    <h1>滚 铁 球</h1>
+    <p>在双轨铁道上滚动铁球，穿越隧道，躲避障碍</p>
+    <p style="font-size:13px;color:#777;">G 加速 &nbsp;|&nbsp; F 减速 &nbsp;|&nbsp; ← → 或 A D 方向</p>
+    <p style="font-size:12px;color:#666;">不按 G 铁球不会动 · 掉落时有概率落到下层轨道</p>
+    <button id="btn-start" class="btn">开始游戏</button>
+  </div>
+
+  <!-- Death Screen -->
+  <div id="death-screen" class="screen-overlay hidden">
+    <h2>铁球坠落！</h2>
+    <p>撞到障碍物或滚出轨道</p>
+    <button id="btn-retry" class="btn">重新挑战</button>
+  </div>
+
+  <!-- Merge Screen -->
+  <div id="merge-screen" class="screen-overlay hidden">
+    <h2>通关！</h2>
+    <div class="merge-anim">
+      <div class="merge-ball b1"></div>
+      <div class="merge-ball b2"></div>
+      <div class="merge-ball big"></div>
+    </div>
+    <p class="merge-info">铁球融合中...</p>
+  </div>
+
+  <!-- Win Screen -->
+  <div id="win-screen" class="screen-overlay hidden">
+    <h1>全部通关！</h1>
+    <p>你已征服所有轨道，铁球已达最大等级</p>
+    <button id="btn-restart" class="btn">再来一次</button>
+  </div>
+
+  <script src="js/track.js"></script>
+  <script src="js/ball.js"></script>
+  <script src="js/renderer.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

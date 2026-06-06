@@ -1,0 +1,1875 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>数学跑酷</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Bangers&family=Noto+Sans+SC:wght@400;700;900&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Noto Sans SC', sans-serif;
+      background: #0a0a1a;
+      overflow: hidden;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #game-container {
+      position: relative;
+      width: 900px;
+      height: 500px;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 0 60px rgba(255, 100, 50, 0.15), 0 0 120px rgba(100, 50, 255, 0.1);
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      background: #1a1a2e;
+    }
+
+    /* HUD */
+    #hud {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      right: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .hud-item {
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 8px 16px;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .hud-item span {
+      color: #ff6b35;
+      font-family: 'Bangers', cursive;
+      font-size: 18px;
+      margin-left: 4px;
+    }
+
+    .lives {
+      display: flex;
+      gap: 4px;
+    }
+
+    .life-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #ff6b35;
+      box-shadow: 0 0 8px rgba(255, 107, 53, 0.6);
+      transition: all 0.3s;
+    }
+
+    .life-dot.lost {
+      background: #333;
+      box-shadow: none;
+    }
+
+    /* 数学题弹窗 */
+    #math-modal {
+      display: none;
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(12px);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      animation: fadeIn 0.3s ease;
+    }
+
+    #math-modal.active {
+      display: flex;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .modal-content {
+      background: linear-gradient(135deg, #1e1e3a 0%, #2a1a3e 100%);
+      border: 2px solid rgba(255, 107, 53, 0.4);
+      border-radius: 20px;
+      padding: 40px 50px;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 40px rgba(255, 107, 53, 0.1);
+      transform: scale(1);
+      animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    @keyframes popIn {
+      from { transform: scale(0.8); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .modal-title {
+      font-family: 'Bangers', cursive;
+      font-size: 28px;
+      color: #ff6b35;
+      margin-bottom: 8px;
+      text-shadow: 0 0 20px rgba(255, 107, 53, 0.4);
+    }
+
+    .modal-subtitle {
+      color: #888;
+      font-size: 13px;
+      margin-bottom: 24px;
+    }
+
+    .math-question {
+      font-size: 42px;
+      font-weight: 900;
+      color: #fff;
+      margin: 20px 0;
+      letter-spacing: 2px;
+      text-shadow: 0 2px 10px rgba(255, 255, 255, 0.1);
+    }
+
+    #math-input {
+      width: 200px;
+      padding: 12px 20px;
+      font-size: 24px;
+      font-weight: 700;
+      text-align: center;
+      border: 2px solid rgba(255, 107, 53, 0.5);
+      border-radius: 12px;
+      background: rgba(0, 0, 0, 0.4);
+      color: #fff;
+      outline: none;
+      transition: border-color 0.3s;
+    }
+
+    #math-input:focus {
+      border-color: #ff6b35;
+      box-shadow: 0 0 20px rgba(255, 107, 53, 0.2);
+    }
+
+    #math-input.wrong {
+      border-color: #ff3333;
+      animation: shake 0.4s ease;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-8px); }
+      40% { transform: translateX(8px); }
+      60% { transform: translateX(-4px); }
+      80% { transform: translateX(4px); }
+    }
+
+    #submit-btn {
+      display: block;
+      margin: 16px auto 0;
+      padding: 10px 32px;
+      font-size: 16px;
+      font-weight: 700;
+      color: #fff;
+      background: linear-gradient(135deg, #ff6b35, #e84118);
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    #submit-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(255, 107, 53, 0.4);
+    }
+
+    .modal-hint {
+      color: #666;
+      font-size: 12px;
+      margin-top: 12px;
+    }
+
+    /* 开始/结束画面 */
+    #overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(10, 10, 26, 0.95);
+      backdrop-filter: blur(8px);
+      z-index: 200;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.5s;
+    }
+
+    #overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .overlay-title {
+      font-family: 'Bangers', cursive;
+      font-size: 56px;
+      color: #ff6b35;
+      text-shadow: 0 0 40px rgba(255, 107, 53, 0.5);
+      margin-bottom: 8px;
+    }
+
+    .overlay-subtitle {
+      color: #aaa;
+      font-size: 16px;
+      margin-bottom: 32px;
+    }
+
+    .overlay-score {
+      font-size: 20px;
+      color: #fff;
+      margin-bottom: 24px;
+    }
+
+    .overlay-score span {
+      color: #ff6b35;
+      font-family: 'Bangers', cursive;
+      font-size: 28px;
+    }
+
+    #start-btn {
+      padding: 14px 48px;
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+      background: linear-gradient(135deg, #ff6b35, #e84118);
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      letter-spacing: 1px;
+    }
+
+    #start-btn:hover {
+      transform: translateY(-3px) scale(1.02);
+      box-shadow: 0 12px 32px rgba(255, 107, 53, 0.4);
+    }
+
+    .controls-hint {
+      margin-top: 24px;
+      color: #555;
+      font-size: 13px;
+      text-align: center;
+      line-height: 1.8;
+    }
+
+    .key {
+      display: inline-block;
+      padding: 2px 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
+      font-size: 12px;
+      color: #ccc;
+      margin: 0 2px;
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <canvas id="gameCanvas" width="900" height="500"></canvas>
+
+    <!-- HUD -->
+    <div id="hud">
+      <div class="hud-item">距离<span id="score">0</span>m</div>
+      <div class="hud-item" id="buff-display" style="display:none; color:#ffd700;"></div>
+      <div class="hud-item">
+        答错次数
+        <div class="lives" id="lives">
+          <div class="life-dot"></div>
+          <div class="life-dot"></div>
+          <div class="life-dot"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 数学题弹窗 -->
+    <div id="math-modal">
+      <div class="modal-content">
+        <div class="modal-title" id="modal-title">⚡ 障碍挑战</div>
+        <div class="modal-subtitle" id="modal-subtitle">答对数学题才能继续奔跑！</div>
+        <div class="math-question" id="math-question">12 + 7 = ?</div>
+        <input type="number" id="math-input" placeholder="?" autofocus>
+        <button id="submit-btn">确认</button>
+        <div class="modal-hint">按 Enter 提交答案</div>
+      </div>
+    </div>
+
+    <!-- 开始/结束画面 -->
+    <div id="overlay">
+      <div class="overlay-title">数学跑酷</div>
+      <div class="overlay-subtitle">跑步 · 跳跃 · 解题 · 探索</div>
+      <div class="overlay-score" id="final-score" style="display:none">最终距离：<span id="final-score-val">0</span>m</div>
+      <button id="start-btn">开始游戏</button>
+      <div class="controls-hint">
+        <span class="key">空格</span> 或 <span class="key">↑</span> 跳跃 &nbsp;|&nbsp;
+        <span class="key">→</span> 或 <span class="key">D</span> 加速<br>
+        撞到障碍物需回答数学题，答错3次游戏结束<br>
+        收集宝箱获得奖励或进入异世界！
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // 游戏状态
+    let gameRunning = false;
+    let gamePaused = false;
+    let score = 0;
+    let wrongAnswers = 0;
+    let speed = 3;
+    let baseSpeed = 3;
+    let frameCount = 0;
+
+    // 体力系统
+    let stamina = 100;
+    const maxStamina = 100;
+    const staminaDrain = 0.04;
+    const boostThreshold = 95;
+    const boostMultiplier = 2.2;
+    const fatigueThreshold = 25;
+    const fatigueMultiplier = 0.55;
+
+    // 玩家
+    const player = {
+      x: 120,
+      y: 350,
+      width: 40,
+      height: 60,
+      vy: 0,
+      grounded: true,
+      running: false,
+      jumpPower: -14,
+      gravity: 0.6,
+      groundY: 350,
+      frame: 0,
+      frameTimer: 0
+    };
+
+    // 障碍物
+    let obstacles = [];
+    let obstacleTimer = 0;
+    let obstacleInterval = 100;
+
+    // 宝箱系统
+    let chests = [];
+    let chestTimer = 0;
+    let chestInterval = 250; // 每250帧尝试生成
+
+    // Buff 系统
+    let activeBuff = null; // { type: 'rocket'|'jetpack'|'shoes'|'shield'|'bow', remaining: frames, name, icon }
+    let buffParticles = [];
+
+    // 弓箭系统
+    let arrows = []; // { x, y, vx, vy }
+    let arrowCooldown = 0; // 射箭冷却
+
+    // 异世界系统
+    let inOtherWorld = false;
+    let otherWorldType = ''; // 'lava' or 'spike'
+    let otherWorldTimer = 0;
+    let otherWorldDuration = 540; // ~9秒 at 60fps
+    let otherWorldObstacles = [];
+    let otherWorldObstacleTimer = 0;
+    let playerDead = false; // 异世界中被击中
+    let otherworldQuestionsNeeded = 1; // 异世界复活只需答对1题
+    let otherworldQuestionsAnswered = 0;
+
+    // 奖励通知
+    let rewardNotification = null; // { text, icon, timer }
+
+    // 背景元素
+    let bgElements = [];
+    let groundOffset = 0;
+
+    // 粒子
+    let particles = [];
+
+    // 数学题
+    let currentAnswer = 0;
+    let mathModalMode = 'obstacle'; // 'obstacle' | 'otherworld'
+
+    // 爆炸粒子
+    let explosionParticles = [];
+
+    // 初始化背景
+    function initBg() {
+      bgElements = [];
+      for (let i = 0; i < 8; i++) {
+        bgElements.push({
+          x: Math.random() * 900,
+          y: 100 + Math.random() * 200,
+          size: 20 + Math.random() * 40,
+          speed: 0.5 + Math.random() * 1.5,
+          type: Math.floor(Math.random() * 3)
+        });
+      }
+    }
+
+    // 生成障碍物
+    function spawnObstacle() {
+      const types = ['spike', 'block', 'tall'];
+      const type = types[Math.floor(Math.random() * types.length)];
+      let w, h;
+      if (type === 'spike') { w = 30; h = 25; }
+      else if (type === 'block') { w = 50; h = 30; }
+      else { w = 30; h = 45; }
+
+      obstacles.push({
+        x: 920,
+        y: player.groundY + player.height - h,
+        width: w,
+        height: h,
+        type: type,
+        hit: false
+      });
+    }
+
+    // 生成宝箱
+    function spawnChest() {
+      // 70%黄色(奖励), 30%紫色(陷阱)
+      const isGold = Math.random() < 0.7;
+      chests.push({
+        x: 920,
+        y: player.groundY + player.height - 40,
+        width: 36,
+        height: 36,
+        type: isGold ? 'gold' : 'purple',
+        hit: false
+      });
+    }
+
+    // 生成异世界障碍物
+    function spawnOtherWorldObstacle() {
+      let w, h;
+      if (otherWorldType === 'lava') {
+        w = 60 + Math.random() * 40;
+        h = 20;
+      } else {
+        w = 20 + Math.random() * 15;
+        h = 35 + Math.random() * 15;
+      }
+      otherWorldObstacles.push({
+        x: 920,
+        y: player.groundY + player.height - h,
+        width: w,
+        height: h,
+        hit: false
+      });
+    }
+
+    // 生成数学题
+    function generateMath() {
+      const ops = ['+', '-', '×'];
+      const op = ops[Math.floor(Math.random() * ops.length)];
+      let a, b, answer;
+
+      const maxNum = Math.min(20 + Math.floor(score / 200), 50);
+
+      if (op === '+') {
+        a = Math.floor(Math.random() * maxNum) + 1;
+        b = Math.floor(Math.random() * maxNum) + 1;
+        answer = a + b;
+      } else if (op === '-') {
+        a = Math.floor(Math.random() * maxNum) + 5;
+        b = Math.floor(Math.random() * a) + 1;
+        answer = a - b;
+      } else {
+        // 一位数×一位数: 2-9 × 2-9
+        a = Math.floor(Math.random() * 8) + 2;
+        b = Math.floor(Math.random() * 8) + 2;
+        answer = a * b;
+      }
+
+      currentAnswer = answer;
+      document.getElementById('math-question').textContent = `${a} ${op} ${b} = ?`;
+    }
+
+    // 显示数学题(普通障碍)
+    function showMathModal() {
+      gamePaused = true;
+      mathModalMode = 'obstacle';
+      generateMath();
+      const modal = document.getElementById('math-modal');
+      modal.classList.add('active');
+      document.getElementById('modal-title').textContent = '⚡ 障碍挑战';
+      const input = document.getElementById('math-input');
+      input.value = '';
+      input.classList.remove('wrong');
+      setTimeout(() => input.focus(), 100);
+      document.getElementById('modal-subtitle').textContent =
+        `答对数学题才能继续奔跑！（已答错 ${wrongAnswers}/3 次）`;
+    }
+
+    // 显示数学题(异世界复活)
+    function showOtherWorldMathModal() {
+      gamePaused = true;
+      mathModalMode = 'otherworld';
+      otherworldQuestionsAnswered = 0;
+      generateMath();
+      const modal = document.getElementById('math-modal');
+      modal.classList.add('active');
+      document.getElementById('modal-title').textContent = '💀 异世界挑战';
+      const input = document.getElementById('math-input');
+      input.value = '';
+      input.classList.remove('wrong');
+      setTimeout(() => input.focus(), 100);
+      document.getElementById('modal-subtitle').textContent =
+        `答对1道题即可复活！（已答错 ${wrongAnswers}/3 次）`;
+    }
+
+    // 检查答案
+    function checkAnswer() {
+      const input = document.getElementById('math-input');
+      const val = parseInt(input.value);
+
+      if (val === currentAnswer) {
+        if (mathModalMode === 'obstacle') {
+          // 普通障碍 - 正确
+          document.getElementById('math-modal').classList.remove('active');
+          gamePaused = false;
+          obstacles = obstacles.filter(o => !o.hit);
+          score += 10;
+        } else {
+          // 异世界复活 - 只需答对1题
+          otherworldQuestionsAnswered++;
+          // 复活成功
+          document.getElementById('math-modal').classList.remove('active');
+          gamePaused = false;
+          playerDead = false;
+          exitOtherWorld();
+        }
+      } else {
+        // 错误
+        wrongAnswers++;
+        updateLives();
+        input.classList.add('wrong');
+        setTimeout(() => input.classList.remove('wrong'), 400);
+        input.value = '';
+
+        if (wrongAnswers >= 3) {
+          document.getElementById('math-modal').classList.remove('active');
+          gameOver();
+        } else {
+          if (mathModalMode === 'obstacle') {
+            document.getElementById('modal-subtitle').textContent =
+              `答错了！再试试吧（已答错 ${wrongAnswers}/3 次）`;
+          } else {
+            document.getElementById('modal-subtitle').textContent =
+              `答错了！再试一次（已答错 ${wrongAnswers}/3 次）`;
+          }
+          generateMath();
+        }
+      }
+    }
+
+    // 更新生命显示
+    function updateLives() {
+      const dots = document.querySelectorAll('.life-dot');
+      dots.forEach((dot, i) => {
+        if (i < wrongAnswers) dot.classList.add('lost');
+        else dot.classList.remove('lost');
+      });
+    }
+
+    // 碰撞检测
+    function checkCollision(a, b) {
+      return a.x < b.x + b.width &&
+             a.x + a.width > b.x &&
+             a.y < b.y + b.height &&
+             a.y + a.height > b.y;
+    }
+
+    // 生成跑步粒子
+    function emitRunParticle() {
+      if (player.grounded && Math.random() < 0.3) {
+        particles.push({
+          x: player.x + 10,
+          y: player.y + player.height,
+          vx: -Math.random() * 2 - 1,
+          vy: -Math.random() * 2,
+          life: 20,
+          maxLife: 20,
+          size: 3 + Math.random() * 3,
+          color: null
+        });
+      }
+    }
+
+    // 生成 buff 粒子
+    function emitBuffParticles() {
+      if (!activeBuff) return;
+      let color, posX, posY;
+      if (activeBuff.type === 'shield') {
+        // 盾牌：围绕玩家的蓝色护盾粒子
+        color = 'rgba(100, 200, 255,';
+        const angle = frameCount * 0.1;
+        if (Math.random() < 0.4) {
+          buffParticles.push({
+            x: player.x + player.width / 2 + Math.cos(angle) * 25,
+            y: player.y + player.height / 2 + Math.sin(angle) * 20,
+            vx: (Math.random() - 0.5) * 1,
+            vy: -Math.random() * 1.5,
+            life: 15,
+            maxLife: 15,
+            size: 2 + Math.random() * 3,
+            color: color
+          });
+        }
+      } else if (activeBuff.type === 'rocket') {
+        color = 'rgba(255, 100, 0,';
+        posX = player.x;
+        posY = player.y + player.height - 10;
+        for (let i = 0; i < 3; i++) {
+          buffParticles.push({
+            x: posX + Math.random() * 10,
+            y: posY + Math.random() * 10,
+            vx: -Math.random() * 5 - 2,
+            vy: (Math.random() - 0.5) * 3,
+            life: 15,
+            maxLife: 15,
+            size: 4 + Math.random() * 5,
+            color: color
+          });
+        }
+      } else if (activeBuff.type === 'jetpack') {
+        color = 'rgba(100, 180, 255,';
+        posX = player.x + 5;
+        posY = player.y + 30;
+        for (let i = 0; i < 2; i++) {
+          buffParticles.push({
+            x: posX + Math.random() * 5,
+            y: posY + Math.random() * 10,
+            vx: -Math.random() * 3 - 1,
+            vy: Math.random() * 2 + 1,
+            life: 12,
+            maxLife: 12,
+            size: 3 + Math.random() * 4,
+            color: color
+          });
+        }
+      } else if (activeBuff.type === 'shoes') {
+        color = 'rgba(0, 255, 100,';
+        posX = player.x + player.width / 2;
+        posY = player.y + player.height;
+        if (Math.random() < 0.5) {
+          buffParticles.push({
+            x: posX + (Math.random() - 0.5) * 20,
+            y: posY,
+            vx: (Math.random() - 0.5) * 2,
+            vy: -Math.random() * 2 - 1,
+            life: 15,
+            maxLife: 15,
+            size: 3 + Math.random() * 3,
+            color: color
+          });
+        }
+      } else if (activeBuff.type === 'bow') {
+        // 弓箭：手部金色微光
+        color = 'rgba(255, 200, 50,';
+        if (Math.random() < 0.3) {
+          buffParticles.push({
+            x: player.x + player.width + 5,
+            y: player.y + player.height / 2 + (Math.random() - 0.5) * 10,
+            vx: Math.random() * 2,
+            vy: (Math.random() - 0.5) * 1,
+            life: 12,
+            maxLife: 12,
+            size: 2 + Math.random() * 2,
+            color: color
+          });
+        }
+      }
+    }
+
+    // 触发黄色宝箱奖励
+    function triggerGoldChest() {
+      const roll = Math.random();
+      let type, name, icon, duration;
+      if (roll < 0.03) {
+        // 3% 传说级 - 弓箭
+        type = 'bow';
+        name = '弓箭';
+        icon = '🏹';
+        duration = 120 * 60; // 2分钟
+      } else if (roll < 0.08) {
+        // 5% 传说级 - 盾牌
+        type = 'shield';
+        name = '盾牌';
+        icon = '🛡️';
+        duration = 120 * 60; // 2分钟
+      } else if (roll < 0.18) {
+        // 10% 稀有 - 火箭
+        type = 'rocket';
+        name = '火箭';
+        icon = '🚀';
+        duration = 40 * 60; // 40秒
+      } else if (roll < 0.48) {
+        // 30% 普通 - 喷气背包
+        type = 'jetpack';
+        name = '喷气背包';
+        icon = '🎒';
+        duration = 40 * 60; // 40秒
+      } else {
+        // 52% 常见 - 弹跳鞋
+        type = 'shoes';
+        name = '弹跳鞋';
+        icon = '👟';
+        duration = 40 * 60; // 40秒
+      }
+      activeBuff = { type, name, icon, remaining: duration, totalDuration: duration };
+      rewardNotification = { text: `${icon} ${name}`, timer: 120 };
+
+      // 火箭/喷气背包/弹跳鞋获得后飞起来（在空中持续）
+      if (type === 'rocket' || type === 'jetpack' || type === 'shoes') {
+        player.vy = -18;
+        player.grounded = false;
+        for (let i = 0; i < 12; i++) {
+          particles.push({
+            x: player.x + player.width / 2,
+            y: player.y + player.height,
+            vx: (Math.random() - 0.5) * 6,
+            vy: -Math.random() * 5 - 2,
+            life: 25,
+            maxLife: 25,
+            size: 4 + Math.random() * 4,
+            color: type === 'rocket' ? 'rgba(255, 100, 0,' :
+                   type === 'jetpack' ? 'rgba(100, 180, 255,' :
+                   'rgba(0, 255, 100,'
+          });
+        }
+      }
+    }
+
+    // 触发紫色宝箱
+    function triggerPurpleChest(chest) {
+      // 爆炸粒子
+      for (let i = 0; i < 30; i++) {
+        explosionParticles.push({
+          x: chest.x + chest.width / 2,
+          y: chest.y + chest.height / 2,
+          vx: (Math.random() - 0.5) * 10,
+          vy: (Math.random() - 0.5) * 10,
+          life: 30 + Math.random() * 20,
+          maxLife: 50,
+          size: 4 + Math.random() * 6,
+          color: Math.random() < 0.5 ? 'rgba(128, 0, 255,' : 'rgba(255, 50, 50,'
+        });
+      }
+      // 延迟进入异世界（等爆炸效果播完）
+      setTimeout(() => {
+        if (gameRunning && !gamePaused) {
+          enterOtherWorld();
+        }
+      }, 500);
+    }
+
+    // 进入异世界
+    function enterOtherWorld() {
+      inOtherWorld = true;
+      otherWorldType = Math.random() < 0.5 ? 'lava' : 'spike';
+      otherWorldTimer = otherWorldDuration;
+      otherWorldObstacles = [];
+      otherWorldObstacleTimer = 0;
+      playerDead = false;
+      rewardNotification = {
+        text: otherWorldType === 'lava' ? '🌋 岩浆世界！' : '⚔️ 尖刺世界！',
+        timer: 120
+      };
+    }
+
+    // 退出异世界
+    function exitOtherWorld() {
+      inOtherWorld = false;
+      otherWorldObstacles = [];
+      playerDead = false;
+      rewardNotification = { text: '🌍 回到正常世界', timer: 90 };
+    }
+
+    // 绘制背景
+    function drawBackground() {
+      if (inOtherWorld) {
+        drawOtherWorldBackground();
+        return;
+      }
+
+      // 渐变天空
+      const grad = ctx.createLinearGradient(0, 0, 0, 500);
+      grad.addColorStop(0, '#0a0a2e');
+      grad.addColorStop(0.6, '#1a1a3e');
+      grad.addColorStop(1, '#2a1a2e');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 900, 500);
+
+      // 星星
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+      for (let i = 0; i < 50; i++) {
+        const sx = (i * 137.5 + frameCount * 0.1) % 900;
+        const sy = (i * 73.7) % 300;
+        ctx.fillRect(sx, sy, 1.5, 1.5);
+      }
+
+      // 远景建筑
+      bgElements.forEach(el => {
+        el.x -= el.speed * (speed / baseSpeed);
+        if (el.x + el.size < 0) {
+          el.x = 900 + Math.random() * 100;
+          el.y = 100 + Math.random() * 200;
+        }
+        ctx.fillStyle = `rgba(40, 30, 60, ${0.3 + el.size / 100})`;
+        if (el.type === 0) {
+          ctx.fillRect(el.x, el.y, el.size * 0.6, el.size * 1.5);
+        } else if (el.type === 1) {
+          ctx.beginPath();
+          ctx.moveTo(el.x, el.y + el.size);
+          ctx.lineTo(el.x + el.size / 2, el.y);
+          ctx.lineTo(el.x + el.size, el.y + el.size);
+          ctx.fill();
+        } else {
+          ctx.fillRect(el.x, el.y, el.size, el.size * 0.8);
+        }
+      });
+
+      // 地面
+      groundOffset = (groundOffset + speed) % 40;
+      ctx.fillStyle = '#1a1225';
+      ctx.fillRect(0, player.groundY + player.height, 900, 100);
+
+      // 地面线
+      ctx.strokeStyle = 'rgba(255, 107, 53, 0.2)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, player.groundY + player.height);
+      ctx.lineTo(900, player.groundY + player.height);
+      ctx.stroke();
+
+      // 地面网格
+      ctx.strokeStyle = 'rgba(255, 107, 53, 0.06)';
+      ctx.lineWidth = 1;
+      for (let i = -groundOffset; i < 900; i += 40) {
+        ctx.beginPath();
+        ctx.moveTo(i, player.groundY + player.height);
+        ctx.lineTo(i - 20, 500);
+        ctx.stroke();
+      }
+    }
+
+    // 绘制异世界背景
+    function drawOtherWorldBackground() {
+      if (otherWorldType === 'lava') {
+        // 岩浆世界 - 深红/橙色天空
+        const grad = ctx.createLinearGradient(0, 0, 0, 500);
+        grad.addColorStop(0, '#1a0500');
+        grad.addColorStop(0.4, '#3d0c00');
+        grad.addColorStop(0.7, '#5a1500');
+        grad.addColorStop(1, '#2a0a00');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, 900, 500);
+
+        // 火山轮廓
+        ctx.fillStyle = '#1a0800';
+        ctx.beginPath();
+        ctx.moveTo(600, player.groundY + player.height);
+        ctx.lineTo(680, 120);
+        ctx.lineTo(720, 130);
+        ctx.lineTo(800, player.groundY + player.height);
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.moveTo(100, player.groundY + player.height);
+        ctx.lineTo(160, 180);
+        ctx.lineTo(200, 190);
+        ctx.lineTo(280, player.groundY + player.height);
+        ctx.fill();
+
+        // 火焰光晕 at volcano top
+        ctx.fillStyle = `rgba(255, 100, 0, ${0.2 + Math.sin(frameCount * 0.05) * 0.1})`;
+        ctx.beginPath();
+        ctx.arc(700, 125, 25, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 黑色岩石地面
+        ctx.fillStyle = '#0d0d0d';
+        ctx.fillRect(0, player.groundY + player.height, 900, 100);
+
+        // 地面裂缝(橙色)
+        ctx.strokeStyle = 'rgba(255, 80, 0, 0.4)';
+        ctx.lineWidth = 2;
+        groundOffset = (groundOffset + speed) % 40;
+        for (let i = -groundOffset; i < 900; i += 60) {
+          ctx.beginPath();
+          ctx.moveTo(i, player.groundY + player.height);
+          ctx.lineTo(i + 10, player.groundY + player.height + 20);
+          ctx.lineTo(i + 5, 500);
+          ctx.stroke();
+        }
+      } else {
+        // 尖刺世界 - 暗灰/深蓝天空
+        const grad = ctx.createLinearGradient(0, 0, 0, 500);
+        grad.addColorStop(0, '#080810');
+        grad.addColorStop(0.5, '#0d1020');
+        grad.addColorStop(1, '#151525');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, 900, 500);
+
+        // 阴森雾气
+        for (let i = 0; i < 5; i++) {
+          const fx = (i * 200 + frameCount * 0.3) % 1100 - 100;
+          ctx.fillStyle = `rgba(60, 60, 100, ${0.05 + Math.sin(frameCount * 0.02 + i) * 0.03})`;
+          ctx.beginPath();
+          ctx.ellipse(fx, 200 + i * 30, 120, 40, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // 灰色石头地面
+        ctx.fillStyle = '#1a1a22';
+        ctx.fillRect(0, player.groundY + player.height, 900, 100);
+
+        // 石头纹理
+        ctx.strokeStyle = 'rgba(100, 100, 120, 0.2)';
+        ctx.lineWidth = 1;
+        groundOffset = (groundOffset + speed) % 40;
+        for (let i = -groundOffset; i < 900; i += 35) {
+          ctx.beginPath();
+          ctx.moveTo(i, player.groundY + player.height + 5);
+          ctx.lineTo(i + 15, player.groundY + player.height + 25);
+          ctx.stroke();
+        }
+      }
+    }
+
+    // 绘制玩家
+    function drawPlayer() {
+      const px = player.x;
+      const py = player.y;
+
+      // 身体影子
+      ctx.fillStyle = inOtherWorld ? 'rgba(255, 50, 50, 0.1)' : 'rgba(255, 107, 53, 0.1)';
+      ctx.beginPath();
+      ctx.ellipse(px + player.width / 2, player.groundY + player.height, 20, 5, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 死亡闪红
+      if (playerDead) {
+        ctx.globalAlpha = 0.5 + Math.sin(frameCount * 0.3) * 0.3;
+      }
+
+      // 跑步动画
+      player.frameTimer++;
+      if (player.frameTimer > 6) {
+        player.frame = (player.frame + 1) % 4;
+        player.frameTimer = 0;
+      }
+
+      // 身体颜色
+      let bodyColor = '#ff6b35';
+      if (activeBuff) {
+        if (activeBuff.type === 'shield') bodyColor = '#44ddff';
+        else if (activeBuff.type === 'bow') bodyColor = '#ffcc33';
+        else if (activeBuff.type === 'rocket') bodyColor = '#ff4400';
+        else if (activeBuff.type === 'jetpack') bodyColor = '#44aaff';
+        else if (activeBuff.type === 'shoes') bodyColor = '#44ff88';
+      }
+
+      ctx.fillStyle = bodyColor;
+      ctx.shadowColor = `${bodyColor}99`;
+      ctx.shadowBlur = 15;
+
+      // 头
+      ctx.beginPath();
+      ctx.arc(px + player.width / 2, py + 12, 12, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 躯干
+      ctx.fillRect(px + 12, py + 22, 16, 22);
+
+      // 腿部动画
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = bodyColor;
+      ctx.lineWidth = 5;
+      ctx.lineCap = 'round';
+
+      if (!player.grounded) {
+        ctx.beginPath();
+        ctx.moveTo(px + 14, py + 44);
+        ctx.lineTo(px + 6, py + 56);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(px + 26, py + 44);
+        ctx.lineTo(px + 34, py + 56);
+        ctx.stroke();
+      } else {
+        const legAngle = Math.sin(player.frame * Math.PI / 2) * 12;
+        ctx.beginPath();
+        ctx.moveTo(px + 16, py + 44);
+        ctx.lineTo(px + 16 - legAngle, py + 60);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(px + 24, py + 44);
+        ctx.lineTo(px + 24 + legAngle, py + 60);
+        ctx.stroke();
+      }
+
+      // 手臂
+      ctx.lineWidth = 4;
+      const armSwing = Math.sin(player.frame * Math.PI / 2) * 8;
+      ctx.beginPath();
+      ctx.moveTo(px + 12, py + 26);
+      ctx.lineTo(px + 4 - armSwing, py + 38);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(px + 28, py + 26);
+      ctx.lineTo(px + 36 + armSwing, py + 38);
+      ctx.stroke();
+
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = 1;
+
+      // 盾牌光环
+      if (activeBuff && activeBuff.type === 'shield') {
+        const pulse = 0.3 + Math.sin(frameCount * 0.08) * 0.15;
+        ctx.strokeStyle = `rgba(100, 220, 255, ${pulse})`;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.ellipse(px + player.width / 2, py + player.height / 2, 28, 35, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        // 内圈
+        ctx.strokeStyle = `rgba(150, 240, 255, ${pulse * 0.5})`;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.ellipse(px + player.width / 2, py + player.height / 2, 24, 31, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      // 弓箭武器外观
+      if (activeBuff && activeBuff.type === 'bow') {
+        ctx.strokeStyle = '#aa6622';
+        ctx.lineWidth = 2;
+        // 弓身（弧形）
+        ctx.beginPath();
+        ctx.arc(px + player.width + 6, py + player.height / 2, 12, -Math.PI * 0.7, Math.PI * 0.7);
+        ctx.stroke();
+        // 弓弦
+        ctx.strokeStyle = '#dddddd';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        const bowCX = px + player.width + 6;
+        const bowCY = py + player.height / 2;
+        ctx.moveTo(bowCX + 12 * Math.cos(-Math.PI * 0.7), bowCY + 12 * Math.sin(-Math.PI * 0.7));
+        ctx.lineTo(bowCX + 12 * Math.cos(Math.PI * 0.7), bowCY + 12 * Math.sin(Math.PI * 0.7));
+        ctx.stroke();
+      }
+    }
+
+    // 绘制障碍物
+    function drawObstacles() {
+      obstacles.forEach(ob => {
+        if (ob.type === 'spike') {
+          ctx.fillStyle = '#e84118';
+          ctx.shadowColor = 'rgba(232, 65, 24, 0.5)';
+          ctx.shadowBlur = 10;
+          ctx.beginPath();
+          ctx.moveTo(ob.x, ob.y + ob.height);
+          ctx.lineTo(ob.x + ob.width / 2, ob.y);
+          ctx.lineTo(ob.x + ob.width, ob.y + ob.height);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = 'rgba(232, 65, 24, 0.3)';
+          ctx.fillRect(ob.x - 2, ob.y + ob.height - 4, ob.width + 4, 4);
+        } else if (ob.type === 'block') {
+          ctx.fillStyle = '#9b59b6';
+          ctx.shadowColor = 'rgba(155, 89, 182, 0.5)';
+          ctx.shadowBlur = 10;
+          ctx.fillRect(ob.x, ob.y, ob.width, ob.height);
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(ob.x + 4, ob.y + 4, ob.width - 8, ob.height - 8);
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+          ctx.font = '18px Bangers';
+          ctx.textAlign = 'center';
+          ctx.fillText('?', ob.x + ob.width / 2, ob.y + ob.height / 2 + 6);
+        } else {
+          ctx.fillStyle = '#e74c3c';
+          ctx.shadowColor = 'rgba(231, 76, 60, 0.5)';
+          ctx.shadowBlur = 10;
+          ctx.fillRect(ob.x, ob.y, ob.width, ob.height);
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+          ctx.fillRect(ob.x + 4, ob.y + 4, ob.width - 8, 8);
+        }
+        ctx.shadowBlur = 0;
+      });
+    }
+
+    // 绘制宝箱
+    function drawChests() {
+      chests.forEach(chest => {
+        const cx = chest.x;
+        const cy = chest.y;
+        const cw = chest.width;
+        const ch = chest.height;
+
+        if (chest.type === 'gold') {
+          // 黄色宝箱
+          ctx.shadowColor = 'rgba(255, 200, 0, 0.6)';
+          ctx.shadowBlur = 12;
+          ctx.fillStyle = '#d4a017';
+          ctx.fillRect(cx, cy, cw, ch);
+          // 高光边
+          ctx.fillStyle = '#ffd700';
+          ctx.fillRect(cx, cy, cw, 6);
+          ctx.fillRect(cx, cy, 4, ch);
+          // 暗面
+          ctx.fillStyle = '#996b00';
+          ctx.fillRect(cx + cw - 4, cy, 4, ch);
+          ctx.fillRect(cx, cy + ch - 4, cw, 4);
+          // 锁扣
+          ctx.fillStyle = '#8B6914';
+          ctx.fillRect(cx + cw/2 - 5, cy + ch/2 - 5, 10, 10);
+          // 问号
+          ctx.fillStyle = '#fff';
+          ctx.font = 'bold 18px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('?', cx + cw / 2, cy + ch / 2);
+        } else {
+          // 紫色宝箱
+          ctx.shadowColor = 'rgba(128, 0, 200, 0.6)';
+          ctx.shadowBlur = 12;
+          ctx.fillStyle = '#4a0080';
+          ctx.fillRect(cx, cy, cw, ch);
+          // 高光边
+          ctx.fillStyle = '#6b00b3';
+          ctx.fillRect(cx, cy, cw, 6);
+          ctx.fillRect(cx, cy, 4, ch);
+          // 暗面
+          ctx.fillStyle = '#2a004d';
+          ctx.fillRect(cx + cw - 4, cy, 4, ch);
+          ctx.fillRect(cx, cy + ch - 4, cw, 4);
+          // 叉叉
+          ctx.strokeStyle = '#ff3333';
+          ctx.lineWidth = 3;
+          ctx.lineCap = 'round';
+          const margin = 10;
+          ctx.beginPath();
+          ctx.moveTo(cx + margin, cy + margin);
+          ctx.lineTo(cx + cw - margin, cy + ch - margin);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(cx + cw - margin, cy + margin);
+          ctx.lineTo(cx + margin, cy + ch - margin);
+          ctx.stroke();
+        }
+        ctx.shadowBlur = 0;
+        ctx.textBaseline = 'alphabetic';
+      });
+    }
+
+    // 绘制异世界障碍物
+    function drawOtherWorldObstacles() {
+      otherWorldObstacles.forEach(ob => {
+        if (otherWorldType === 'lava') {
+          // 岩浆坑
+          ctx.fillStyle = '#1a0500';
+          ctx.fillRect(ob.x, ob.y + 5, ob.width, ob.height - 5);
+          // 岩浆液体
+          const lavaGrad = ctx.createLinearGradient(ob.x, ob.y, ob.x, ob.y + ob.height);
+          lavaGrad.addColorStop(0, '#ff4400');
+          lavaGrad.addColorStop(0.5, '#ff8800');
+          lavaGrad.addColorStop(1, '#cc2200');
+          ctx.fillStyle = lavaGrad;
+          ctx.fillRect(ob.x + 3, ob.y + 3, ob.width - 6, ob.height - 6);
+          // 冒泡动画
+          const bubblePhase = (frameCount * 0.1 + ob.x) % (Math.PI * 2);
+          ctx.fillStyle = 'rgba(255, 200, 0, 0.7)';
+          ctx.beginPath();
+          ctx.arc(ob.x + ob.width * 0.3, ob.y + 8 - Math.abs(Math.sin(bubblePhase)) * 5, 3, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(ob.x + ob.width * 0.7, ob.y + 10 - Math.abs(Math.sin(bubblePhase + 1)) * 4, 2.5, 0, Math.PI * 2);
+          ctx.fill();
+          // 发光
+          ctx.shadowColor = 'rgba(255, 100, 0, 0.5)';
+          ctx.shadowBlur = 10;
+          ctx.fillStyle = 'rgba(255, 150, 0, 0.2)';
+          ctx.fillRect(ob.x, ob.y, ob.width, ob.height);
+          ctx.shadowBlur = 0;
+        } else {
+          // 金属尖刺
+          ctx.fillStyle = '#6a6a7a';
+          ctx.shadowColor = 'rgba(150, 150, 180, 0.4)';
+          ctx.shadowBlur = 8;
+          // 主尖刺
+          const spikeCount = Math.floor(ob.width / 10);
+          for (let i = 0; i < spikeCount; i++) {
+            const sx = ob.x + i * (ob.width / spikeCount);
+            const sw = ob.width / spikeCount;
+            ctx.beginPath();
+            ctx.moveTo(sx, ob.y + ob.height);
+            ctx.lineTo(sx + sw / 2, ob.y);
+            ctx.lineTo(sx + sw, ob.y + ob.height);
+            ctx.closePath();
+            ctx.fill();
+          }
+          // 金属高光
+          ctx.fillStyle = 'rgba(200, 200, 220, 0.3)';
+          for (let i = 0; i < spikeCount; i++) {
+            const sx = ob.x + i * (ob.width / spikeCount);
+            const sw = ob.width / spikeCount;
+            ctx.beginPath();
+            ctx.moveTo(sx + sw * 0.3, ob.y + ob.height * 0.5);
+            ctx.lineTo(sx + sw / 2, ob.y + 3);
+            ctx.lineTo(sx + sw * 0.5, ob.y + ob.height * 0.5);
+            ctx.closePath();
+            ctx.fill();
+          }
+          // 底座
+          ctx.fillStyle = '#3a3a4a';
+          ctx.fillRect(ob.x - 2, ob.y + ob.height - 5, ob.width + 4, 5);
+          ctx.shadowBlur = 0;
+        }
+      });
+    }
+
+    // 绘制粒子
+    function drawParticles() {
+      particles.forEach((p) => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life--;
+        const alpha = p.life / p.maxLife;
+        ctx.fillStyle = p.color ? `${p.color}${alpha * 0.6})` : `rgba(255, 150, 80, ${alpha * 0.6})`;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size * alpha, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      particles = particles.filter(p => p.life > 0);
+
+      // Buff粒子
+      buffParticles.forEach((p) => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life--;
+        const alpha = p.life / p.maxLife;
+        ctx.fillStyle = `${p.color}${alpha * 0.8})`;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size * alpha, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      buffParticles = buffParticles.filter(p => p.life > 0);
+
+      // 爆炸粒子
+      explosionParticles.forEach((p) => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.2; // 重力
+        p.life--;
+        const alpha = p.life / p.maxLife;
+        ctx.fillStyle = `${p.color}${alpha})`;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size * alpha, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      explosionParticles = explosionParticles.filter(p => p.life > 0);
+    }
+
+    // 绘制奖励通知
+    function drawRewardNotification() {
+      if (!rewardNotification || rewardNotification.timer <= 0) {
+        rewardNotification = null;
+        return;
+      }
+      rewardNotification.timer--;
+      const alpha = Math.min(1, rewardNotification.timer / 30);
+      const yOff = (120 - rewardNotification.timer) * 0.3;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+      ctx.font = 'bold 22px "Noto Sans SC"';
+      ctx.textAlign = 'center';
+      const textWidth = ctx.measureText(rewardNotification.text).width;
+      ctx.beginPath();
+      ctx.roundRect(450 - textWidth / 2 - 16, 55 + yOff - 16, textWidth + 32, 40, 10);
+      ctx.fill();
+      ctx.fillStyle = '#ffd700';
+      ctx.fillText(rewardNotification.text, 450, 55 + yOff + 8);
+      ctx.restore();
+    }
+
+    // 绘制buff HUD
+    function drawBuffHUD() {
+      if (!activeBuff) {
+        document.getElementById('buff-display').style.display = 'none';
+        return;
+      }
+      const remainSec = Math.ceil(activeBuff.remaining / 60);
+      const buffEl = document.getElementById('buff-display');
+      buffEl.style.display = 'block';
+      buffEl.textContent = `${activeBuff.icon} ${activeBuff.name} ${remainSec}s`;
+    }
+
+    // 主更新
+    function update() {
+      if (!gameRunning || gamePaused) return;
+
+      frameCount++;
+
+      // 体力消耗
+      const drain = player.running ? staminaDrain * 3 : staminaDrain;
+      stamina = Math.max(0, stamina - drain);
+
+      // 根据体力计算速度倍率
+      let speedMultiplier = 1.0;
+      if (stamina >= boostThreshold) {
+        const boostRatio = (stamina - boostThreshold) / (maxStamina - boostThreshold);
+        speedMultiplier = 1.0 + (boostMultiplier - 1.0) * boostRatio;
+      } else if (stamina <= fatigueThreshold) {
+        const fatigueRatio = stamina / fatigueThreshold;
+        speedMultiplier = fatigueMultiplier + (1.0 - fatigueMultiplier) * fatigueRatio;
+      }
+
+      // Buff速度加成
+      let buffSpeedMult = 1.0;
+      if (activeBuff) {
+        if (activeBuff.type === 'rocket') buffSpeedMult = 2.0;
+        else if (activeBuff.type === 'jetpack') buffSpeedMult = 1.5;
+      }
+
+      // 计算最终速度
+      const progressSpeed = baseSpeed + Math.floor(score / 300) * 0.3;
+      const sprintBonus = player.running ? 1.5 : 1.0;
+      speed = progressSpeed * speedMultiplier * sprintBonus * buffSpeedMult;
+
+      score += Math.floor(speed / 3);
+
+      // Buff 计时
+      if (activeBuff) {
+        activeBuff.remaining--;
+        emitBuffParticles();
+        if (activeBuff.remaining <= 0) {
+          activeBuff = null;
+        }
+      }
+
+      // 玩家物理
+      if (!player.grounded) {
+        // 火箭/喷气背包/弹跳鞋：在空中悬浮，不落地
+        if (activeBuff && (activeBuff.type === 'rocket' || activeBuff.type === 'jetpack' || activeBuff.type === 'shoes')) {
+          // 悬浮在一定高度（地面上方80像素）
+          const floatY = player.groundY - 80;
+          if (player.y < floatY) {
+            player.vy += player.gravity * 0.3; // 缓慢下降
+          } else if (player.y > floatY) {
+            player.vy -= 0.5; // 浮力向上
+          }
+          player.vy *= 0.9; // 阻尼
+          player.y += player.vy;
+          // 不让飞太高或落地
+          if (player.y > player.groundY) {
+            player.y = player.groundY;
+            player.vy = -3; // 弹起
+          }
+          if (player.y < player.groundY - 150) {
+            player.y = player.groundY - 150;
+            player.vy = 0;
+          }
+        } else {
+          player.vy += player.gravity;
+          player.y += player.vy;
+          if (player.y >= player.groundY) {
+            player.y = player.groundY;
+            player.vy = 0;
+            player.grounded = true;
+          }
+        }
+      }
+
+      if (inOtherWorld) {
+        updateOtherWorld();
+      } else {
+        updateNormalWorld();
+      }
+
+      // 粒子
+      emitRunParticle();
+
+      // 更新HUD
+      document.getElementById('score').textContent = score;
+      drawBuffHUD();
+    }
+
+    // 正常世界更新
+    function updateNormalWorld() {
+      // 弓箭冷却
+      if (arrowCooldown > 0) arrowCooldown--;
+
+      // 更新箭矢
+      arrows.forEach(a => { a.x += a.vx; });
+      arrows = arrows.filter(a => a.x < 950);
+
+      // 箭矢击中障碍物
+      for (let i = arrows.length - 1; i >= 0; i--) {
+        for (let j = obstacles.length - 1; j >= 0; j--) {
+          const a = arrows[i];
+          const ob = obstacles[j];
+          if (a && a.x + 20 > ob.x && a.x < ob.x + ob.width &&
+              a.y > ob.y && a.y < ob.y + ob.height) {
+            // 击碎粒子
+            for (let k = 0; k < 6; k++) {
+              particles.push({
+                x: ob.x + ob.width / 2,
+                y: ob.y + ob.height / 2,
+                vx: (Math.random() - 0.5) * 8,
+                vy: (Math.random() - 0.5) * 6,
+                life: 18,
+                maxLife: 18,
+                size: 3 + Math.random() * 3,
+                color: 'rgba(255, 200, 50,'
+              });
+            }
+            obstacles.splice(j, 1);
+            arrows.splice(i, 1);
+            score += 3;
+            break;
+          }
+        }
+      }
+
+      // 障碍物
+      obstacleTimer++;
+      const interval = Math.max(60, obstacleInterval - Math.floor(score / 500) * 5);
+      if (obstacleTimer >= interval) {
+        spawnObstacle();
+        obstacleTimer = 0;
+      }
+
+      obstacles.forEach(ob => { ob.x -= speed; });
+      obstacles = obstacles.filter(ob => ob.x + ob.width > -50);
+
+      // 碰撞检测 - 障碍物
+      for (let ob of obstacles) {
+        if (!ob.hit && checkCollision(player, ob)) {
+          ob.hit = true;
+          // 盾牌：碰到障碍物不触发数学题，直接摧毁障碍
+          if (activeBuff && activeBuff.type === 'shield') {
+            // 盾牌击碎障碍的粒子效果
+            for (let i = 0; i < 8; i++) {
+              particles.push({
+                x: ob.x + ob.width / 2,
+                y: ob.y + ob.height / 2,
+                vx: (Math.random() - 0.5) * 8,
+                vy: (Math.random() - 0.5) * 6,
+                life: 20,
+                maxLife: 20,
+                size: 3 + Math.random() * 4,
+                color: 'rgba(100, 200, 255,'
+              });
+            }
+            obstacles = obstacles.filter(o => !o.hit);
+            score += 5;
+          } else {
+            showMathModal();
+          }
+          break;
+        }
+      }
+
+      // 宝箱
+      chestTimer++;
+      if (chestTimer >= chestInterval) {
+        if (Math.random() < 0.6) { // 60%概率生成
+          spawnChest();
+        }
+        chestTimer = 0;
+      }
+
+      chests.forEach(ch => { ch.x -= speed; });
+      chests = chests.filter(ch => ch.x + ch.width > -50);
+
+      // 碰撞检测 - 宝箱
+      for (let i = chests.length - 1; i >= 0; i--) {
+        const ch = chests[i];
+        if (!ch.hit && checkCollision(player, ch)) {
+          ch.hit = true;
+          if (ch.type === 'gold') {
+            triggerGoldChest();
+          } else {
+            triggerPurpleChest(ch);
+          }
+          chests.splice(i, 1);
+          break;
+        }
+      }
+    }
+
+    // 异世界更新
+    function updateOtherWorld() {
+      otherWorldTimer--;
+
+      // 自动回到正常世界
+      if (otherWorldTimer <= 0) {
+        exitOtherWorld();
+        return;
+      }
+
+      // 生成异世界障碍
+      otherWorldObstacleTimer++;
+      const owInterval = otherWorldType === 'lava' ? 80 : 70;
+      if (otherWorldObstacleTimer >= owInterval) {
+        spawnOtherWorldObstacle();
+        otherWorldObstacleTimer = 0;
+      }
+
+      otherWorldObstacles.forEach(ob => { ob.x -= speed; });
+      otherWorldObstacles = otherWorldObstacles.filter(ob => ob.x + ob.width > -50);
+
+      // 碰撞检测 - 异世界障碍
+      if (!playerDead) {
+        for (let ob of otherWorldObstacles) {
+          if (!ob.hit && checkCollision(player, ob)) {
+            ob.hit = true;
+            // 盾牌在异世界也能挡住伤害
+            if (activeBuff && activeBuff.type === 'shield') {
+              for (let i = 0; i < 8; i++) {
+                particles.push({
+                  x: ob.x + ob.width / 2,
+                  y: ob.y + ob.height / 2,
+                  vx: (Math.random() - 0.5) * 8,
+                  vy: (Math.random() - 0.5) * 6,
+                  life: 20,
+                  maxLife: 20,
+                  size: 3 + Math.random() * 4,
+                  color: 'rgba(100, 200, 255,'
+                });
+              }
+              otherWorldObstacles = otherWorldObstacles.filter(o => !o.hit);
+            } else {
+              playerDead = true;
+              // 死亡效果粒子
+              for (let i = 0; i < 15; i++) {
+                particles.push({
+                  x: player.x + player.width / 2,
+                  y: player.y + player.height / 2,
+                  vx: (Math.random() - 0.5) * 6,
+                  vy: (Math.random() - 0.5) * 6,
+                  life: 20,
+                  maxLife: 20,
+                  size: 3 + Math.random() * 4,
+                  color: otherWorldType === 'lava' ? 'rgba(255, 80, 0,' : 'rgba(150, 150, 200,'
+                });
+              }
+              // 弹出异世界数学题
+              showOtherWorldMathModal();
+            }
+            break;
+          }
+        }
+      }
+    }
+
+    // 绘制体力条
+    function drawStaminaBar() {
+      const barWidth = 300;
+      const barHeight = 14;
+      const x = (900 - barWidth) / 2;
+      const y = 475;
+
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+      ctx.beginPath();
+      ctx.roundRect(x - 2, y - 2, barWidth + 4, barHeight + 4, 6);
+      ctx.fill();
+
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.roundRect(x - 2, y - 2, barWidth + 4, barHeight + 4, 6);
+      ctx.stroke();
+
+      let barColor;
+      if (stamina >= boostThreshold) {
+        barColor = ctx.createLinearGradient(x, y, x + barWidth * (stamina / maxStamina), y);
+        barColor.addColorStop(0, '#ffd700');
+        barColor.addColorStop(1, '#ffaa00');
+      } else if (stamina > fatigueThreshold) {
+        barColor = ctx.createLinearGradient(x, y, x + barWidth * (stamina / maxStamina), y);
+        barColor.addColorStop(0, '#36d1dc');
+        barColor.addColorStop(1, '#5b86e5');
+      } else {
+        barColor = ctx.createLinearGradient(x, y, x + barWidth * (stamina / maxStamina), y);
+        barColor.addColorStop(0, '#ff4444');
+        barColor.addColorStop(1, '#cc0000');
+      }
+
+      const fillWidth = barWidth * (stamina / maxStamina);
+      if (fillWidth > 0) {
+        ctx.fillStyle = barColor;
+        ctx.beginPath();
+        ctx.roundRect(x, y, fillWidth, barHeight, 4);
+        ctx.fill();
+
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.beginPath();
+        ctx.roundRect(x + 2, y + 1, fillWidth - 4, barHeight / 2 - 1, 3);
+        ctx.fill();
+      }
+
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+      ctx.font = '11px "Noto Sans SC"';
+      ctx.textAlign = 'left';
+      ctx.fillText('体力', x - 36, y + 11);
+
+      if (stamina >= boostThreshold) {
+        ctx.fillStyle = '#ffd700';
+        ctx.font = 'bold 10px "Noto Sans SC"';
+        ctx.textAlign = 'right';
+        ctx.fillText('⚡ 超速', x + barWidth + 40, y + 11);
+      } else if (stamina <= fatigueThreshold) {
+        ctx.fillStyle = '#ff4444';
+        ctx.font = 'bold 10px "Noto Sans SC"';
+        ctx.textAlign = 'right';
+        ctx.fillText('😓 疲劳', x + barWidth + 40, y + 11);
+      }
+    }
+
+    // 绘制异世界进度条
+    function drawOtherWorldTimer() {
+      if (!inOtherWorld) return;
+      const barWidth = 200;
+      const barHeight = 8;
+      const x = (900 - barWidth) / 2;
+      const y = 460;
+      const progress = otherWorldTimer / otherWorldDuration;
+
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+      ctx.beginPath();
+      ctx.roundRect(x - 2, y - 2, barWidth + 4, barHeight + 4, 4);
+      ctx.fill();
+
+      const barGrad = ctx.createLinearGradient(x, y, x + barWidth * progress, y);
+      if (otherWorldType === 'lava') {
+        barGrad.addColorStop(0, '#ff4400');
+        barGrad.addColorStop(1, '#ff8800');
+      } else {
+        barGrad.addColorStop(0, '#6666cc');
+        barGrad.addColorStop(1, '#9999ff');
+      }
+      ctx.fillStyle = barGrad;
+      ctx.beginPath();
+      ctx.roundRect(x, y, barWidth * progress, barHeight, 3);
+      ctx.fill();
+
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+      ctx.font = '10px "Noto Sans SC"';
+      ctx.textAlign = 'center';
+      ctx.fillText(otherWorldType === 'lava' ? '🌋 岩浆世界' : '⚔️ 尖刺世界', 450, y - 5);
+    }
+
+    // 绘制箭矢
+    function drawArrows() {
+      arrows.forEach(a => {
+        ctx.save();
+        // 箭身
+        ctx.strokeStyle = '#ffdd44';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(a.x - 20, a.y);
+        ctx.stroke();
+        // 箭头
+        ctx.fillStyle = '#ffdd44';
+        ctx.beginPath();
+        ctx.moveTo(a.x + 6, a.y);
+        ctx.lineTo(a.x - 2, a.y - 4);
+        ctx.lineTo(a.x - 2, a.y + 4);
+        ctx.closePath();
+        ctx.fill();
+        // 尾羽
+        ctx.fillStyle = '#ff8844';
+        ctx.beginPath();
+        ctx.moveTo(a.x - 18, a.y - 3);
+        ctx.lineTo(a.x - 24, a.y - 5);
+        ctx.lineTo(a.x - 20, a.y);
+        ctx.closePath();
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(a.x - 18, a.y + 3);
+        ctx.lineTo(a.x - 24, a.y + 5);
+        ctx.lineTo(a.x - 20, a.y);
+        ctx.closePath();
+        ctx.fill();
+        // 光效
+        ctx.shadowColor = '#ffdd44';
+        ctx.shadowBlur = 6;
+        ctx.strokeStyle = 'rgba(255, 220, 60, 0.3)';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(a.x - 20, a.y);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.restore();
+      });
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, 900, 500);
+      drawBackground();
+      drawParticles();
+      if (inOtherWorld) {
+        drawOtherWorldObstacles();
+      } else {
+        drawObstacles();
+        drawChests();
+      }
+      drawArrows();
+      drawPlayer();
+      drawStaminaBar();
+      drawOtherWorldTimer();
+      drawRewardNotification();
+      // 弓箭提示
+      if (activeBuff && activeBuff.type === 'bow') {
+        ctx.fillStyle = 'rgba(255, 220, 60, 0.7)';
+        ctx.font = '11px "Noto Sans SC"';
+        ctx.textAlign = 'right';
+        ctx.fillText('按 P 射箭', 885, 490);
+      }
+    }
+
+    // 游戏循环
+    function gameLoop() {
+      update();
+      draw();
+      requestAnimationFrame(gameLoop);
+    }
+
+    // 开始游戏
+    function startGame() {
+      gameRunning = true;
+      gamePaused = false;
+      score = 0;
+      wrongAnswers = 0;
+      speed = baseSpeed;
+      frameCount = 0;
+      stamina = maxStamina;
+      obstacles = [];
+      particles = [];
+      buffParticles = [];
+      explosionParticles = [];
+      chests = [];
+      obstacleTimer = 0;
+      chestTimer = 0;
+      activeBuff = null;
+      rewardNotification = null;
+      arrows = [];
+      arrowCooldown = 0;
+      inOtherWorld = false;
+      otherWorldObstacles = [];
+      playerDead = false;
+      player.y = player.groundY;
+      player.vy = 0;
+      player.grounded = true;
+
+      updateLives();
+      document.getElementById('score').textContent = '0';
+      document.getElementById('buff-display').style.display = 'none';
+      document.getElementById('overlay').classList.add('hidden');
+    }
+
+    // 游戏结束
+    function gameOver() {
+      gameRunning = false;
+      gamePaused = false;
+      inOtherWorld = false;
+      playerDead = false;
+      document.getElementById('final-score-val').textContent = score;
+      document.getElementById('final-score').style.display = 'block';
+      document.getElementById('start-btn').textContent = '重新开始';
+      document.getElementById('overlay').classList.remove('hidden');
+    }
+
+    // 事件
+    document.addEventListener('keydown', (e) => {
+      if (!gameRunning || gamePaused) return;
+      if ((e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') && player.grounded) {
+        e.preventDefault();
+        // 弹跳鞋增强跳跃
+        let jumpMult = 1.0;
+        if (activeBuff && activeBuff.type === 'shoes') jumpMult = 1.5;
+        player.vy = player.jumpPower * jumpMult;
+        player.grounded = false;
+        // 跳跃粒子
+        const pColor = (activeBuff && activeBuff.type === 'shoes') ? 'rgba(0, 255, 100,' : null;
+        for (let i = 0; i < 5; i++) {
+          particles.push({
+            x: player.x + player.width / 2,
+            y: player.y + player.height,
+            vx: (Math.random() - 0.5) * 4,
+            vy: -Math.random() * 3,
+            life: 15,
+            maxLife: 15,
+            size: 4 + Math.random() * 3,
+            color: pColor
+          });
+        }
+      }
+      if (e.code === 'ArrowRight' || e.code === 'KeyD') {
+        player.running = true;
+      }
+      // P键发射弓箭
+      if (e.code === 'KeyP') {
+        if (activeBuff && activeBuff.type === 'bow' && arrowCooldown <= 0) {
+          arrows.push({
+            x: player.x + player.width,
+            y: player.y + player.height / 2,
+            vx: 12,
+            vy: 0
+          });
+          arrowCooldown = 15; // 15帧冷却（0.25秒）
+        }
+      }
+    });
+
+    document.addEventListener('keyup', (e) => {
+      if (e.code === 'ArrowRight' || e.code === 'KeyD') {
+        player.running = false;
+      }
+    });
+
+    // 数学题提交
+    document.getElementById('submit-btn').addEventListener('click', checkAnswer);
+    document.getElementById('math-input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') checkAnswer();
+    });
+
+    // 开始按钮
+    document.getElementById('start-btn').addEventListener('click', startGame);
+
+    // 初始化
+    initBg();
+    gameLoop();
+  </script>
+</body>
+</html>

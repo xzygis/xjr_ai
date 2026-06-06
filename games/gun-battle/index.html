@@ -1,0 +1,1257 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>塔防基地保卫战</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { overflow: hidden; background: #0a0a1a; font-family: 'Microsoft YaHei', sans-serif; }
+canvas { display: block; }
+#ui {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  color: #00ffff;
+  font-size: 14px;
+  text-shadow: 0 0 10px #00ffff;
+  pointer-events: none;
+  z-index: 10;
+}
+#ui div { margin-bottom: 6px; }
+#population-bar {
+  position: fixed;
+  top: 50px;
+  right: 20px;
+  width: 200px;
+  pointer-events: none;
+  z-index: 10;
+}
+#population-bar .label {
+  color: #00ffff;
+  font-size: 13px;
+  text-shadow: 0 0 8px #00ffff;
+  margin-bottom: 4px;
+}
+#population-bar .bar-bg {
+  width: 100%;
+  height: 16px;
+  background: rgba(0,50,100,0.4);
+  border: 1px solid #00aaff;
+  border-radius: 8px;
+  overflow: hidden;
+}
+#population-bar .bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #0066ff, #00ccff);
+  border-radius: 8px;
+  transition: width 0.2s;
+  box-shadow: 0 0 8px #00aaff;
+}
+#instructions {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #00ffff;
+  font-size: 14px;
+  text-shadow: 0 0 10px #00ffff;
+  pointer-events: none;
+  z-index: 10;
+  text-align: center;
+  line-height: 1.8;
+}
+#title {
+  position: fixed;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #ffffff;
+  font-size: 22px;
+  font-weight: bold;
+  text-shadow: 0 0 20px #00aaff, 0 0 40px #0066ff;
+  pointer-events: none;
+  z-index: 10;
+}
+#spawn-info {
+  position: fixed;
+  top: 45%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #ffff00;
+  font-size: 26px;
+  font-weight: bold;
+  text-shadow: 0 0 20px #ffff00;
+  pointer-events: none;
+  z-index: 10;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+#sound-btn {
+  position: fixed;
+  top: 10px;
+  right: 20px;
+  background: rgba(0,100,200,0.3);
+  border: 1px solid #00aaff;
+  color: #00ffff;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  z-index: 20;
+}
+#sound-btn:hover { background: rgba(0,100,200,0.6); }
+</style>
+</head>
+<body>
+<div id="title">塔防基地保卫战</div>
+<button id="sound-btn" onclick="toggleSound()">🔊 音效开</button>
+<div id="ui">
+  <div id="kill-count">击杀数: 0</div>
+  <div id="soldier-count">小兵数: 0</div>
+  <div id="big-soldier-count">大兵数: 0</div>
+  <div id="enemy-count">敌人数: 0</div>
+  <div id="wave-info">波次: 1</div>
+</div>
+<div id="population-bar">
+  <div class="label" id="pop-label">人口: 0 / 1,000,000</div>
+  <div class="bar-bg"><div class="bar-fill" id="pop-fill" style="width:0%"></div></div>
+</div>
+<div id="spawn-info"></div>
+<div id="instructions">
+  鼠标 = 你（自动发射制导导弹） | 按 A = 小兵 | 按 B = 大兵<br>
+  满100人全军出击 | 敌人只增不减 | 50波后出现大型猛敌！
+</div>
+<canvas id="game"></canvas>
+
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+
+let W, H, baseX, baseY, baseW, baseH;
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+  baseW = W * 0.35;
+  baseH = H * 0.28;
+  baseX = (W - baseW) / 2;
+  baseY = (H - baseH) / 2;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// ========== 音效系统（Web Audio API 合成） ==========
+let audioCtx = null;
+let soundEnabled = true;
+
+function initAudio() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+
+function toggleSound() {
+  soundEnabled = !soundEnabled;
+  document.getElementById('sound-btn').textContent = soundEnabled ? '🔊 音效开' : '🔇 音效关';
+  if (soundEnabled) initAudio();
+}
+
+// 射击音效 - 小兵（短促高频）
+function playShotSmall() {
+  if (!soundEnabled || !audioCtx) return;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.type = 'square';
+  osc.frequency.setValueAtTime(1200, audioCtx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(400, audioCtx.currentTime + 0.05);
+  gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.06);
+  osc.start();
+  osc.stop(audioCtx.currentTime + 0.06);
+}
+
+// 射击音效 - 大兵（低沉有力）
+function playShotBig() {
+  if (!soundEnabled || !audioCtx) return;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(60, audioCtx.currentTime + 0.15);
+  gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+  osc.start();
+  osc.stop(audioCtx.currentTime + 0.15);
+}
+
+// 击杀音效
+function playKill() {
+  if (!soundEnabled || !audioCtx) return;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.08);
+  gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+  osc.start();
+  osc.stop(audioCtx.currentTime + 0.1);
+}
+
+// 满员提示音效
+function playPopFull() {
+  if (!soundEnabled || !audioCtx) return;
+  const notes = [523, 659, 784, 1047];
+  notes.forEach((freq, i) => {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    const t = audioCtx.currentTime + i * 0.1;
+    gain.gain.setValueAtTime(0, t);
+    gain.gain.linearRampToValueAtTime(0.15, t + 0.03);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+    osc.start(t);
+    osc.stop(t + 0.2);
+  });
+}
+
+// 背景音乐 - 低沉循环脉冲
+let bgmNode = null;
+function startBGM() {
+  if (!audioCtx || bgmNode) return;
+  const osc1 = audioCtx.createOscillator();
+  const osc2 = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  const lfo = audioCtx.createOscillator();
+  const lfoGain = audioCtx.createGain();
+  
+  osc1.type = 'sine';
+  osc1.frequency.value = 55;
+  osc2.type = 'triangle';
+  osc2.frequency.value = 82.5;
+  lfo.type = 'sine';
+  lfo.frequency.value = 0.5;
+  lfoGain.gain.value = 0.03;
+  
+  lfo.connect(lfoGain);
+  lfoGain.connect(gain.gain);
+  osc1.connect(gain);
+  osc2.connect(gain);
+  gain.gain.value = 0.04;
+  gain.connect(audioCtx.destination);
+  
+  osc1.start();
+  osc2.start();
+  lfo.start();
+  bgmNode = { osc1, osc2, lfo, gain };
+}
+
+// 限制音效频率
+let lastShotTime = 0;
+let lastKillTime = 0;
+function throttledShotSmall() {
+  const now = performance.now();
+  if (now - lastShotTime > 50) { playShotSmall(); lastShotTime = now; }
+}
+function throttledShotBig() {
+  const now = performance.now();
+  if (now - lastShotTime > 100) { playShotBig(); lastShotTime = now; }
+}
+function throttledKill() {
+  const now = performance.now();
+  if (now - lastKillTime > 30) { playKill(); lastKillTime = now; }
+}
+
+// ========== 游戏状态 ==========
+const MAX_SOLDIERS = 100; // 大兵+小兵合计100人就出击
+let populationFull = false;
+let kills = 0;
+let wave = 1;
+let smallSoldiers = [];
+let bigSoldiers = [];
+let enemies = [];
+let explosions = [];
+let bullets = []; // {x, y, vx, vy, r, life, type: 'small'|'big'}
+let enemyBullets = []; // 敌人子弹
+let missiles = []; // 制导导弹
+let playerMissiles = []; // 玩家（鼠标）发射的制导导弹
+
+// 鼠标=玩家
+let mouseX = 0, mouseY = 0;
+let playerMissileCooldown = 0;
+
+const killCountEl = document.getElementById('kill-count');
+const soldierCountEl = document.getElementById('soldier-count');
+const bigSoldierCountEl = document.getElementById('big-soldier-count');
+const enemyCountEl = document.getElementById('enemy-count');
+const waveInfoEl = document.getElementById('wave-info');
+const spawnInfoEl = document.getElementById('spawn-info');
+const popLabelEl = document.getElementById('pop-label');
+const popFillEl = document.getElementById('pop-fill');
+
+// Helpers
+function rand(min, max) { return Math.random() * (max - min) + min; }
+function dist(x1, y1, x2, y2) { return Math.hypot(x2 - x1, y2 - y1); }
+
+function showSpawnMsg(text) {
+  spawnInfoEl.textContent = text;
+  spawnInfoEl.style.opacity = 1;
+  setTimeout(() => { spawnInfoEl.style.opacity = 0; }, 1000);
+}
+
+function formatNum(n) {
+  if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+  if (n >= 1000) return (n / 1000).toFixed(0) + 'K';
+  return n.toString();
+}
+
+// ========== 召唤单位 ==========
+
+// 小兵 - 快速子弹，单体伤害（说是加了亿万个，实际就几个）
+function spawnSmallSoldiers() {
+  initAudio();
+  startBGM();
+  const count = 5; // 实际只出5个
+  for (let i = 0; i < count; i++) {
+    smallSoldiers.push({
+      x: baseX + rand(10, baseW - 10),
+      y: baseY + rand(10, baseH - 10),
+      vx: rand(-1, 1),
+      vy: rand(-1, 1),
+      r: 3,
+      shootCooldown: rand(0, 40),
+      outside: false
+    });
+  }
+  checkPopulation();
+  showSpawnMsg(`+9999999999999999999999999999999 小兵！`);
+}
+
+// 大兵 - 直接出击 + 发射制导导弹
+function spawnBigSoldiers() {
+  initAudio();
+  startBGM();
+  const count = 5;
+  const cx = baseX + baseW / 2;
+  const cy = baseY + baseH / 2;
+  for (let i = 0; i < count; i++) {
+    const angle = rand(0, Math.PI * 2);
+    bigSoldiers.push({
+      x: cx + rand(-20, 20),
+      y: cy + rand(-20, 20),
+      vx: Math.cos(angle) * 2,
+      vy: Math.sin(angle) * 2,
+      r: 8,
+      hp: 20,
+      shootCooldown: rand(0, 60),
+      missileCooldown: rand(30, 90),
+      shootRange: 500,
+      outside: true // 大兵直接出基地
+    });
+  }
+  checkPopulation();
+  showSpawnMsg(`召唤大兵 x 9999999999999999999999999999`);
+}
+
+// 检查是否满100人 → 全部出击
+function checkPopulation() {
+  const total = smallSoldiers.length + bigSoldiers.length;
+  if (total >= MAX_SOLDIERS && !populationFull) {
+    populationFull = true;
+    playPopFull();
+    showSpawnMsg('⚠️ 满100人！全军出击！');
+    for (const s of smallSoldiers) s.outside = true;
+    for (const s of bigSoldiers) s.outside = true;
+  }
+}
+
+// 从边缘生成敌人（带射击能力）- 越来越多，50波以上变大变猛
+function spawnEnemies() {
+  const count = Math.min(40 + wave * 8, 300); // 越来越多
+  const cx = baseX + baseW / 2;
+  const cy = baseY + baseH / 2;
+  const isBossWave = wave >= 50;
+  
+  for (let i = 0; i < count; i++) {
+    let x, y;
+    const side = Math.floor(rand(0, 4));
+    switch(side) {
+      case 0: x = rand(0, W); y = -10; break;
+      case 1: x = rand(0, W); y = H + 10; break;
+      case 2: x = -10; y = rand(0, H); break;
+      case 3: x = W + 10; y = rand(0, H); break;
+    }
+    const angle = Math.atan2(cy - y + rand(-60, 60), cx - x + rand(-60, 60));
+    const speed = rand(3, 6);
+    
+    if (isBossWave && Math.random() < 0.3) {
+      // 大型敌人！50波以上出现
+      enemies.push({
+        x, y,
+        vx: Math.cos(angle) * speed * 0.7,
+        vy: Math.sin(angle) * speed * 0.7,
+        r: rand(10, 16), // 更大
+        hp: 5, // 需要打5下
+        shootCooldown: rand(30, 80), // 射击更频繁
+        isBoss: true
+      });
+    } else {
+      enemies.push({
+        x, y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        r: rand(4, 6),
+        hp: 1,
+        shootCooldown: rand(60, 180),
+        isBoss: false
+      });
+    }
+  }
+  wave++;
+}
+
+// 敌人射击 - 向基地或我方单位发射子弹
+function enemyShoot(enemy) {
+  // 优先瞄准最近的我方单位
+  let targetX, targetY;
+  let nearest = null;
+  let nearDist = 300;
+  
+  const allSoldiers = [...smallSoldiers, ...bigSoldiers];
+  for (const s of allSoldiers) {
+    const d = dist(enemy.x, enemy.y, s.x, s.y);
+    if (d < nearDist) { nearDist = d; nearest = s; }
+  }
+  
+  if (nearest) {
+    targetX = nearest.x;
+    targetY = nearest.y;
+  } else {
+    // 没有近距离目标就射向基地中心
+    targetX = baseX + baseW / 2 + rand(-50, 50);
+    targetY = baseY + baseH / 2 + rand(-50, 50);
+  }
+  
+  const angle = Math.atan2(targetY - enemy.y, targetX - enemy.x);
+  const speed = 4;
+  enemyBullets.push({
+    x: enemy.x,
+    y: enemy.y,
+    vx: Math.cos(angle) * speed,
+    vy: Math.sin(angle) * speed,
+    r: 3,
+    life: 1
+  });
+}
+
+// 爆炸效果
+function createExplosion(x, y, color) {
+  const count = 6;
+  for (let i = 0; i < count; i++) {
+    const angle = rand(0, Math.PI * 2);
+    const speed = rand(1, 3.5);
+    explosions.push({
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      r: rand(2, 4),
+      life: 1,
+      decay: rand(0.03, 0.06),
+      color
+    });
+  }
+}
+
+// 小兵射击 - 快速单体子弹
+function shootSmall(soldier, target) {
+  const angle = Math.atan2(target.y - soldier.y, target.x - soldier.x);
+  const speed = 10; // 很快
+  bullets.push({
+    x: soldier.x,
+    y: soldier.y,
+    vx: Math.cos(angle) * speed,
+    vy: Math.sin(angle) * speed,
+    r: 2,
+    life: 1,
+    type: 'small' // 只能打一个
+  });
+  throttledShotSmall();
+}
+
+// 大兵射击 - 慢速穿透子弹
+function shootBig(soldier, target) {
+  const angle = Math.atan2(target.y - soldier.y, target.x - soldier.x);
+  const speed = 3; // 慢速
+  bullets.push({
+    x: soldier.x,
+    y: soldier.y,
+    vx: Math.cos(angle) * speed,
+    vy: Math.sin(angle) * speed,
+    r: 5,
+    life: 1,
+    type: 'big' // 无限穿透
+  });
+  throttledShotBig();
+}
+
+// ========== 输入 ==========
+window.addEventListener('keydown', (e) => {
+  const key = e.key.toLowerCase();
+  if (key === 'a') spawnSmallSoldiers();
+  if (key === 'b') spawnBigSoldiers();
+});
+
+// 鼠标跟踪 = 玩家位置
+canvas.addEventListener('mousemove', (e) => {
+  mouseX = e.clientX;
+  mouseY = e.clientY;
+});
+
+// 点击画面初始化音频
+canvas.addEventListener('click', () => { initAudio(); startBGM(); });
+
+// ========== 更新逻辑 ==========
+function update() {
+  // 玩家（鼠标）自动发射制导导弹
+  playerMissileCooldown--;
+  if (playerMissileCooldown <= 0 && enemies.length > 0) {
+    // 发射3颗导弹
+    for (let n = 0; n < 3; n++) {
+      const target = enemies[Math.floor(rand(0, enemies.length))];
+      if (target) {
+        const angle = rand(0, Math.PI * 2);
+        playerMissiles.push({
+          x: mouseX,
+          y: mouseY,
+          vx: Math.cos(angle) * 3,
+          vy: Math.sin(angle) * 3,
+          r: 5,
+          life: 1,
+          targetId: enemies.indexOf(target),
+          speed: 7,
+          hits: 0
+        });
+      }
+    }
+    playerMissileCooldown = 15; // 每15帧发射一轮
+    throttledShotBig();
+  }
+
+  // 更新小兵
+  for (let i = smallSoldiers.length - 1; i >= 0; i--) {
+    const s = smallSoldiers[i];
+    s.x += s.vx;
+    s.y += s.vy;
+
+    if (s.outside || populationFull) {
+      // 满员模式：小兵出基地，追踪敌人
+      s.outside = true;
+      let nearest = null;
+      let nearDist = 500;
+      for (const e of enemies) {
+        const d = dist(s.x, s.y, e.x, e.y);
+        if (d < nearDist) { nearDist = d; nearest = e; }
+      }
+      if (nearest) {
+        const angle = Math.atan2(nearest.y - s.y, nearest.x - s.x);
+        s.vx = s.vx * 0.9 + Math.cos(angle) * 0.3;
+        s.vy = s.vy * 0.9 + Math.sin(angle) * 0.3;
+      } else {
+        if (Math.random() < 0.02) { s.vx = rand(-1, 1); s.vy = rand(-1, 1); }
+      }
+      // 保持在屏幕内
+      if (s.x < 5) s.vx += 0.5;
+      if (s.x > W - 5) s.vx -= 0.5;
+      if (s.y < 5) s.vy += 0.5;
+      if (s.y > H - 5) s.vy -= 0.5;
+    } else {
+      // 正常模式：在基地内弹跳
+      if (s.x - s.r < baseX) { s.x = baseX + s.r; s.vx *= -1; }
+      if (s.x + s.r > baseX + baseW) { s.x = baseX + baseW - s.r; s.vx *= -1; }
+      if (s.y - s.r < baseY) { s.y = baseY + s.r; s.vy *= -1; }
+      if (s.y + s.r > baseY + baseH) { s.y = baseY + baseH - s.r; s.vy *= -1; }
+      if (Math.random() < 0.02) { s.vx = rand(-1.5, 1.5); s.vy = rand(-1.5, 1.5); }
+    }
+
+    // 射击
+    s.shootCooldown--;
+    if (s.shootCooldown <= 0) {
+      let nearest = null;
+      let nearDist = s.outside ? 300 : 280;
+      for (const e of enemies) {
+        const d = dist(s.x, s.y, e.x, e.y);
+        if (d < nearDist) { nearDist = d; nearest = e; }
+      }
+      if (nearest) {
+        shootSmall(s, nearest);
+        s.shootCooldown = rand(15, 30);
+      } else {
+        s.shootCooldown = 8;
+      }
+    }
+  }
+
+  // 更新大兵（直接出击 + 穿透弹 + 制导导弹）
+  for (let i = bigSoldiers.length - 1; i >= 0; i--) {
+    const s = bigSoldiers[i];
+    s.x += s.vx;
+    s.y += s.vy;
+    
+    // 追踪敌人
+    let nearest = null;
+    let nearDist = 600;
+    for (const e of enemies) {
+      const d = dist(s.x, s.y, e.x, e.y);
+      if (d < nearDist) { nearDist = d; nearest = e; }
+    }
+    if (nearest) {
+      const angle = Math.atan2(nearest.y - s.y, nearest.x - s.x);
+      s.vx = s.vx * 0.92 + Math.cos(angle) * 0.25;
+      s.vy = s.vy * 0.92 + Math.sin(angle) * 0.25;
+    } else {
+      if (Math.random() < 0.02) { s.vx = rand(-0.5, 0.5); s.vy = rand(-0.5, 0.5); }
+    }
+    // 保持在屏幕内
+    if (s.x < 10) s.vx += 0.4;
+    if (s.x > W - 10) s.vx -= 0.4;
+    if (s.y < 10) s.vy += 0.4;
+    if (s.y > H - 10) s.vy -= 0.4;
+
+    // 射击 - 穿透弹
+    s.shootCooldown--;
+    if (s.shootCooldown <= 0) {
+      let target = null;
+      let td = s.shootRange;
+      for (const e of enemies) {
+        const d = dist(s.x, s.y, e.x, e.y);
+        if (d < td) { td = d; target = e; }
+      }
+      if (target) {
+        shootBig(s, target);
+        s.shootCooldown = rand(50, 80);
+      } else {
+        s.shootCooldown = 15;
+      }
+    }
+    
+    // 制导导弹 - 追击机制：命中3次才销毁
+    s.missileCooldown--;
+    if (s.missileCooldown <= 0 && enemies.length > 0) {
+      const target = enemies[Math.floor(rand(0, enemies.length))];
+      missiles.push({
+        x: s.x,
+        y: s.y,
+        vx: rand(-2, 2),
+        vy: rand(-2, 2),
+        r: 4,
+        life: 1,
+        targetId: enemies.indexOf(target),
+        speed: 5,
+        hits: 0, // 已命中次数
+        maxHits: 3 // 命中3次后销毁
+      });
+      s.missileCooldown = rand(100, 180);
+      throttledShotBig();
+      
+      // 大兵发射导弹时，附近敌人速度提升！
+      for (const e of enemies) {
+        if (dist(s.x, s.y, e.x, e.y) < 400) {
+          const boost = 1.5;
+          e.vx *= boost;
+          e.vy *= boost;
+        }
+      }
+    }
+  }
+
+  // 更新敌人 - 不能进入基地，会射击
+  // 大兵导弹在场时敌人移速加成
+  const missileSpeedBoost = missiles.length > 0 ? 1.3 : 1.0;
+  
+  for (let i = enemies.length - 1; i >= 0; i--) {
+    const e = enemies[i];
+    const nextX = e.x + e.vx;
+    const nextY = e.y + e.vy;
+    const margin = e.r + 3;
+    const wouldEnter = nextX > baseX - margin && nextX < baseX + baseW + margin &&
+                       nextY > baseY - margin && nextY < baseY + baseH + margin;
+    if (wouldEnter) {
+      const cx = baseX + baseW / 2;
+      const cy = baseY + baseH / 2;
+      const angle = Math.atan2(e.y - cy, e.x - cx);
+      const tangent = angle + Math.PI / 2;
+      const orbitSpeed = 2.5; // 快速环绕
+      e.vx = Math.cos(tangent) * orbitSpeed + (Math.random() - 0.5) * 0.5;
+      e.vy = Math.sin(tangent) * orbitSpeed + (Math.random() - 0.5) * 0.5;
+      if (nextX > baseX && nextX < baseX + baseW && nextY > baseY && nextY < baseY + baseH) {
+        e.x += Math.cos(angle) * 2;
+        e.y += Math.sin(angle) * 2;
+      }
+    }
+    e.x += e.vx * missileSpeedBoost;
+    e.y += e.vy * missileSpeedBoost;
+    
+    // 敌人射击
+    e.shootCooldown--;
+    if (e.shootCooldown <= 0 && e.x > -50 && e.x < W + 50 && e.y > -50 && e.y < H + 50) {
+      enemyShoot(e);
+      e.shootCooldown = e.isBoss ? rand(30, 80) : rand(80, 200);
+    }
+    
+    // 敌人跑出屏幕 → 越出边界越大！
+    const outX = Math.max(0, -e.x, e.x - W);
+    const outY = Math.max(0, -e.y, e.y - H);
+    const outDist = Math.max(outX, outY);
+    if (outDist > 0) {
+      // 越出屏幕越大，每超出100px就增大一些
+      e.growLevel = (e.growLevel || 0) + 0.02;
+      const baseR = e.isBoss ? 12 : 5;
+      const maxR = 60; // 极限大小
+      e.r = baseR + e.growLevel * 3;
+      
+      if (e.r >= maxR) {
+        // 到极限了！变超级小但威力超级大
+        e.r = 2;
+        e.hp = 30; // 超硬
+        e.isBoss = true;
+        e.shootCooldown = 10; // 疯狂射击
+        e.vx *= 2;
+        e.vy *= 2;
+        e.growLevel = 0;
+        e.isRage = true; // 狂暴模式
+        createExplosion(e.x, e.y, '#ff00ff');
+        createExplosion(e.x, e.y, '#ffffff');
+      }
+      
+      // 拉回屏幕
+      const cx = baseX + baseW / 2;
+      const cy = baseY + baseH / 2;
+      const pullAngle = Math.atan2(cy - e.y, cx - e.x);
+      e.vx += Math.cos(pullAngle) * 0.1;
+      e.vy += Math.sin(pullAngle) * 0.1;
+    }
+  }
+
+  // 更新子弹
+  for (let i = bullets.length - 1; i >= 0; i--) {
+    const b = bullets[i];
+    b.x += b.vx;
+    b.y += b.vy;
+    b.life -= (b.type === 'big' ? 0.003 : 0.012);
+    if (b.life <= 0 || b.x < -20 || b.x > W + 20 || b.y < -20 || b.y > H + 20) {
+      bullets.splice(i, 1);
+      continue;
+    }
+    // 碰撞检测
+    for (let j = enemies.length - 1; j >= 0; j--) {
+      const e = enemies[j];
+      if (dist(b.x, b.y, e.x, e.y) < b.r + e.r) {
+        e.hp--;
+        createExplosion(b.x, b.y, '#ff6600');
+        if (e.hp <= 0) {
+          createExplosion(e.x, e.y, '#ff6600');
+          enemies.splice(j, 1);
+          kills++;
+          throttledKill();
+        }
+        if (b.type === 'small') {
+          // 小兵子弹：只打一个就消失
+          bullets.splice(i, 1);
+          break;
+        }
+        // 大兵子弹：无限穿透，不消失，继续飞
+      }
+    }
+  }
+
+  // 满员后出击的小兵碰撞敌人也能消灭
+  if (populationFull) {
+    for (let i = smallSoldiers.length - 1; i >= 0; i--) {
+      const s = smallSoldiers[i];
+      if (!s.outside) continue;
+      for (let j = enemies.length - 1; j >= 0; j--) {
+        const e = enemies[j];
+        if (dist(s.x, s.y, e.x, e.y) < s.r + e.r + 3) {
+          createExplosion(e.x, e.y, '#ff4400');
+          enemies.splice(j, 1);
+          kills++;
+          throttledKill();
+          smallSoldiers.splice(i, 1);
+          break;
+        }
+      }
+    }
+    // 大兵出击碰撞
+    for (let i = bigSoldiers.length - 1; i >= 0; i--) {
+      const s = bigSoldiers[i];
+      if (!s.outside) continue;
+      for (let j = enemies.length - 1; j >= 0; j--) {
+        const e = enemies[j];
+        if (dist(s.x, s.y, e.x, e.y) < s.r + e.r) {
+          createExplosion(e.x, e.y, '#ff4400');
+          createExplosion(s.x, s.y, '#00aaff');
+          enemies.splice(j, 1);
+          kills++;
+          throttledKill();
+          s.hp--;
+          if (s.hp <= 0) {
+            bigSoldiers.splice(i, 1);
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  // 更新敌人子弹 - 打不穿基地！碰到基地墙壁就消失
+  for (let i = enemyBullets.length - 1; i >= 0; i--) {
+    const b = enemyBullets[i];
+    b.x += b.vx;
+    b.y += b.vy;
+    b.life -= 0.01;
+    if (b.life <= 0 || b.x < -20 || b.x > W + 20 || b.y < -20 || b.y > H + 20) {
+      enemyBullets.splice(i, 1);
+      continue;
+    }
+    // 碰到基地墙壁就消失（打不穿基地）
+    if (b.x > baseX && b.x < baseX + baseW && b.y > baseY && b.y < baseY + baseH) {
+      createExplosion(b.x, b.y, '#ff8800');
+      enemyBullets.splice(i, 1);
+      continue;
+    }
+    // 只能击中在基地外面的单位
+    let hit = false;
+    for (let j = smallSoldiers.length - 1; j >= 0; j--) {
+      const s = smallSoldiers[j];
+      if (!s.outside) continue; // 基地内的小兵受基地保护
+      if (dist(b.x, b.y, s.x, s.y) < b.r + s.r) {
+        createExplosion(s.x, s.y, '#00aaff');
+        smallSoldiers.splice(j, 1);
+        enemyBullets.splice(i, 1);
+        hit = true;
+        break;
+      }
+    }
+    if (hit) continue;
+    // 击中大兵（大兵在外面）
+    for (let j = bigSoldiers.length - 1; j >= 0; j--) {
+      const s = bigSoldiers[j];
+      if (dist(b.x, b.y, s.x, s.y) < b.r + s.r) {
+        s.hp--;
+        createExplosion(b.x, b.y, '#00aaff');
+        enemyBullets.splice(i, 1);
+        if (s.hp <= 0) {
+          createExplosion(s.x, s.y, '#0088ff');
+          bigSoldiers.splice(j, 1);
+        }
+        break;
+      }
+    }
+  }
+
+  // 更新制导导弹 - 持续追踪 + 命中3次后销毁
+  for (let i = missiles.length - 1; i >= 0; i--) {
+    const m = missiles[i];
+    m.life -= 0.002;
+    if (m.life <= 0 || m.x < -100 || m.x > W + 100 || m.y < -100 || m.y > H + 100) {
+      missiles.splice(i, 1);
+      continue;
+    }
+    
+    // 持续追踪目标 - 每帧重新搜索最近敌人并调整方向
+    let target = enemies[m.targetId];
+    // 如果目标不存在或距离太远，重新锁定最近目标
+    if (!target || dist(m.x, m.y, target.x, target.y) > 500) {
+      let nearDist = Infinity;
+      target = null;
+      for (let j = 0; j < enemies.length; j++) {
+        const d = dist(m.x, m.y, enemies[j].x, enemies[j].y);
+        if (d < nearDist) { nearDist = d; target = enemies[j]; m.targetId = j; }
+      }
+    }
+    if (target) {
+      // 强力追踪：持续调整飞行方向朝向目标
+      const angle = Math.atan2(target.y - m.y, target.x - m.x);
+      const turnRate = 0.3; // 转向速率
+      m.vx = m.vx * (1 - turnRate) + Math.cos(angle) * m.speed * turnRate;
+      m.vy = m.vy * (1 - turnRate) + Math.sin(angle) * m.speed * turnRate;
+    }
+    // 保持恒定速度
+    const currentSpeed = Math.hypot(m.vx, m.vy);
+    if (currentSpeed > 0.1) {
+      m.vx = (m.vx / currentSpeed) * m.speed;
+      m.vy = (m.vy / currentSpeed) * m.speed;
+    }
+    
+    m.x += m.vx;
+    m.y += m.vy;
+    
+    // 碰撞检测 - 命中3次后销毁，每次命中都造成范围伤害
+    for (let j = enemies.length - 1; j >= 0; j--) {
+      const e = enemies[j];
+      if (dist(m.x, m.y, e.x, e.y) < m.r + e.r + 5) {
+        // 命中！范围爆炸
+        const blastR = 35;
+        createExplosion(m.x, m.y, '#ffaa00');
+        createExplosion(m.x, m.y, '#ff6600');
+        // 范围伤害
+        for (let k = enemies.length - 1; k >= 0; k--) {
+          if (dist(m.x, m.y, enemies[k].x, enemies[k].y) < blastR) {
+            enemies[k].hp--;
+            if (enemies[k].hp <= 0) {
+              createExplosion(enemies[k].x, enemies[k].y, '#ff4400');
+              enemies.splice(k, 1);
+              kills++;
+            }
+          }
+        }
+        throttledKill();
+        
+        m.hits = (m.hits || 0) + 1;
+        if (m.hits >= (m.maxHits || 3)) {
+          // 命中3次，销毁导弹
+          createExplosion(m.x, m.y, '#ffffff');
+          missiles.splice(i, 1);
+        } else {
+          // 还没到3次，继续追击下一个目标
+          m.targetId = -1; // 重新锁定
+          // 碰撞后轻微偏转避免粘在同一个位置
+          m.vx += rand(-2, 2);
+          m.vy += rand(-2, 2);
+        }
+        break;
+      }
+    }
+  }
+
+  // 更新玩家制导导弹 - 强力追踪 + 命中3次后销毁
+  for (let i = playerMissiles.length - 1; i >= 0; i--) {
+    const m = playerMissiles[i];
+    m.life -= 0.002;
+    if (m.life <= 0 || m.x < -100 || m.x > W + 100 || m.y < -100 || m.y > H + 100) {
+      playerMissiles.splice(i, 1);
+      continue;
+    }
+    // 持续追踪 - 每帧锁定最近目标
+    let target = enemies[m.targetId];
+    if (!target || dist(m.x, m.y, target.x, target.y) > 500) {
+      let nearDist = Infinity;
+      target = null;
+      for (let j = 0; j < enemies.length; j++) {
+        const d = dist(m.x, m.y, enemies[j].x, enemies[j].y);
+        if (d < nearDist) { nearDist = d; target = enemies[j]; m.targetId = j; }
+      }
+    }
+    if (target) {
+      const angle = Math.atan2(target.y - m.y, target.x - m.x);
+      const turnRate = 0.35;
+      m.vx = m.vx * (1 - turnRate) + Math.cos(angle) * m.speed * turnRate;
+      m.vy = m.vy * (1 - turnRate) + Math.sin(angle) * m.speed * turnRate;
+    }
+    // 保持恒定速度
+    const currentSpeed = Math.hypot(m.vx, m.vy);
+    if (currentSpeed > 0.1) {
+      m.vx = (m.vx / currentSpeed) * m.speed;
+      m.vy = (m.vy / currentSpeed) * m.speed;
+    }
+    m.x += m.vx;
+    m.y += m.vy;
+    
+    // 碰撞 - 命中3次销毁
+    for (let j = enemies.length - 1; j >= 0; j--) {
+      const e = enemies[j];
+      if (dist(m.x, m.y, e.x, e.y) < m.r + e.r + 5) {
+        const blastR = 45;
+        createExplosion(m.x, m.y, '#00ffaa');
+        for (let k = enemies.length - 1; k >= 0; k--) {
+          if (dist(m.x, m.y, enemies[k].x, enemies[k].y) < blastR) {
+            enemies[k].hp--;
+            if (enemies[k].hp <= 0) {
+              createExplosion(enemies[k].x, enemies[k].y, '#ff4400');
+              enemies.splice(k, 1);
+              kills++;
+            }
+          }
+        }
+        throttledKill();
+        
+        m.hits = (m.hits || 0) + 1;
+        if (m.hits >= 3) {
+          createExplosion(m.x, m.y, '#ffffff');
+          playerMissiles.splice(i, 1);
+        } else {
+          m.targetId = -1;
+          m.vx += rand(-2, 2);
+          m.vy += rand(-2, 2);
+        }
+        break;
+      }
+    }
+  }
+
+  // 更新爆炸
+  for (let i = explosions.length - 1; i >= 0; i--) {
+    const p = explosions[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.life -= p.decay;
+    p.vx *= 0.95;
+    p.vy *= 0.95;
+    if (p.life <= 0) explosions.splice(i, 1);
+  }
+
+  // 更新人口显示
+  const total = smallSoldiers.length + bigSoldiers.length;
+  const popPct = Math.min(100, (total / MAX_SOLDIERS) * 100);
+  popFillEl.style.width = popPct + '%';
+  popLabelEl.textContent = `兵力: ${total} / ${MAX_SOLDIERS}${populationFull ? ' 【出击中】' : ''}`;
+  if (popPct >= 100) {
+    popFillEl.style.background = 'linear-gradient(90deg, #ff6600, #ffcc00)';
+  } else {
+    popFillEl.style.background = 'linear-gradient(90deg, #0066ff, #00ccff)';
+  }
+
+  // 更新UI - 小兵显示夸张数字但实际很少
+  killCountEl.textContent = `击杀数: ${formatNum(kills)}`;
+  soldierCountEl.textContent = `小兵: 9999999999...亿 (实际${smallSoldiers.length}个)`;
+  bigSoldierCountEl.textContent = `大兵: 9999999999...亿 (实际${bigSoldiers.length}个)`;
+  enemyCountEl.textContent = `敌人数: ${enemies.length} (x9999999999999999999999...)`;
+  waveInfoEl.textContent = `波次: ${wave}${wave >= 50 ? ' ⚠️ 大型敌人出没！' : ''}`;
+}
+
+// ========== 渲染 ==========
+function draw() {
+  ctx.fillStyle = 'rgba(10, 10, 26, 0.18)';
+  ctx.fillRect(0, 0, W, H);
+
+  // 基地
+  ctx.strokeStyle = populationFull ? '#ffaa00' : '#00aaff';
+  ctx.lineWidth = 2.5;
+  ctx.shadowColor = populationFull ? '#ffaa00' : '#00aaff';
+  ctx.shadowBlur = 20;
+  ctx.strokeRect(baseX, baseY, baseW, baseH);
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = populationFull ? 'rgba(255,150,0,0.04)' : 'rgba(0,100,255,0.03)';
+  ctx.fillRect(baseX, baseY, baseW, baseH);
+
+  // 小兵
+  ctx.shadowColor = '#00ccff';
+  ctx.shadowBlur = 6;
+  for (const s of smallSoldiers) {
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+    ctx.fillStyle = s.outside ? '#00ffaa' : '#00ccff';
+    ctx.fill();
+  }
+  ctx.shadowBlur = 0;
+
+  // 大兵
+  ctx.shadowColor = '#0088ff';
+  ctx.shadowBlur = 10;
+  for (const s of bigSoldiers) {
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+    ctx.fillStyle = '#0066dd';
+    ctx.fill();
+    ctx.strokeStyle = '#00aaff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // 十字标记
+    ctx.beginPath();
+    ctx.moveTo(s.x - 4, s.y);
+    ctx.lineTo(s.x + 4, s.y);
+    ctx.moveTo(s.x, s.y - 4);
+    ctx.lineTo(s.x, s.y + 4);
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+  ctx.shadowBlur = 0;
+
+  // 敌人（小敌人红色，大敌人深红+外圈，狂暴敌人紫色闪烁）
+  for (const e of enemies) {
+    ctx.beginPath();
+    ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2);
+    if (e.isRage) {
+      // 狂暴模式 - 超小但超猛，紫色闪烁
+      ctx.fillStyle = Math.random() > 0.5 ? '#ff00ff' : '#ffffff';
+      ctx.shadowColor = '#ff00ff';
+      ctx.shadowBlur = 20;
+      ctx.fill();
+      // 画个危险标记
+      ctx.strokeStyle = '#ffff00';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    } else if (e.isBoss) {
+      ctx.fillStyle = '#cc0000';
+      ctx.shadowColor = '#ff0000';
+      ctx.shadowBlur = 12;
+      ctx.fill();
+      ctx.strokeStyle = '#ff6600';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = '#ff3322';
+      ctx.shadowColor = '#ff2200';
+      ctx.shadowBlur = 5;
+      ctx.fill();
+    }
+  }
+  ctx.shadowBlur = 0;
+
+  // 子弹
+  for (const b of bullets) {
+    ctx.shadowBlur = b.type === 'big' ? 12 : 4;
+    ctx.shadowColor = b.type === 'big' ? '#ff8800' : '#ffff00';
+    ctx.beginPath();
+    if (b.type === 'big') {
+      // 大兵穿透弹 - 拖尾效果
+      const tailLen = 12;
+      const speed = Math.hypot(b.vx, b.vy);
+      const tx = b.x - (b.vx / speed) * tailLen;
+      const ty = b.y - (b.vy / speed) * tailLen;
+      ctx.moveTo(tx, ty);
+      ctx.lineTo(b.x, b.y);
+      ctx.strokeStyle = `rgba(255, 136, 0, ${b.life})`;
+      ctx.lineWidth = b.r;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, b.r * 0.7, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255, 200, 50, ${b.life})`;
+      ctx.fill();
+    } else {
+      ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(200, 255, 100, ${b.life})`;
+      ctx.fill();
+    }
+  }
+  ctx.shadowBlur = 0;
+  ctx.lineCap = 'butt';
+
+  // 敌人子弹（红色）
+  ctx.shadowColor = '#ff4444';
+  ctx.shadowBlur = 6;
+  for (const b of enemyBullets) {
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255, 80, 50, ${b.life})`;
+    ctx.fill();
+  }
+  ctx.shadowBlur = 0;
+
+  // 制导导弹（绿色追踪弹）
+  for (const m of missiles) {
+    const speed = Math.hypot(m.vx, m.vy);
+    if (speed > 0.1) {
+      // 拖尾
+      const tailLen = 18;
+      const tx = m.x - (m.vx / speed) * tailLen;
+      const ty = m.y - (m.vy / speed) * tailLen;
+      ctx.beginPath();
+      ctx.moveTo(tx, ty);
+      ctx.lineTo(m.x, m.y);
+      ctx.strokeStyle = `rgba(0, 255, 100, ${m.life * 0.6})`;
+      ctx.lineWidth = 3;
+      ctx.shadowColor = '#00ff66';
+      ctx.shadowBlur = 10;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+    }
+    // 导弹头
+    ctx.beginPath();
+    ctx.arc(m.x, m.y, m.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(100, 255, 150, ${m.life})`;
+    ctx.shadowColor = '#00ff88';
+    ctx.shadowBlur = 15;
+    ctx.fill();
+  }
+  ctx.shadowBlur = 0;
+  ctx.lineCap = 'butt';
+
+  // 玩家导弹（青色追踪弹）
+  for (const m of playerMissiles) {
+    const speed = Math.hypot(m.vx, m.vy);
+    if (speed > 0.1) {
+      const tailLen = 22;
+      const tx = m.x - (m.vx / speed) * tailLen;
+      const ty = m.y - (m.vy / speed) * tailLen;
+      ctx.beginPath();
+      ctx.moveTo(tx, ty);
+      ctx.lineTo(m.x, m.y);
+      ctx.strokeStyle = `rgba(0, 255, 255, ${m.life * 0.7})`;
+      ctx.lineWidth = 4;
+      ctx.shadowColor = '#00ffff';
+      ctx.shadowBlur = 12;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+    }
+    ctx.beginPath();
+    ctx.arc(m.x, m.y, m.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(150, 255, 255, ${m.life})`;
+    ctx.shadowColor = '#00ffff';
+    ctx.shadowBlur = 18;
+    ctx.fill();
+  }
+  ctx.shadowBlur = 0;
+  ctx.lineCap = 'butt';
+
+  // 绘制玩家（鼠标位置 = 发射塔）
+  ctx.beginPath();
+  ctx.arc(mouseX, mouseY, 12, 0, Math.PI * 2);
+  ctx.strokeStyle = '#00ffff';
+  ctx.lineWidth = 2;
+  ctx.shadowColor = '#00ffff';
+  ctx.shadowBlur = 20;
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(mouseX - 8, mouseY);
+  ctx.lineTo(mouseX + 8, mouseY);
+  ctx.moveTo(mouseX, mouseY - 8);
+  ctx.lineTo(mouseX, mouseY + 8);
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // 爆炸
+  for (const p of explosions) {
+    ctx.globalAlpha = p.life;
+    ctx.shadowColor = p.color;
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r * p.life, 0, Math.PI * 2);
+    ctx.fillStyle = p.color;
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  ctx.shadowBlur = 0;
+}
+
+// ========== 游戏循环 ==========
+let lastEnemySpawn = 0;
+function gameLoop(time) {
+  if (time - lastEnemySpawn > 800) { // 更快生成
+    spawnEnemies();
+    lastEnemySpawn = time;
+  }
+  update();
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>

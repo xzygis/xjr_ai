@@ -1,0 +1,161 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+  font-family: 'Segoe UI', 'PingFang SC', sans-serif;
+}
+
+canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* HUD overlay */
+#hud {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  padding: 16px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.hud-left, .hud-right {
+  color: #fff;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.7);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.hud-left span, .hud-right span {
+  display: block;
+  margin-bottom: 4px;
+}
+
+/* Speed bar */
+#speed-bar-wrap {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 240px;
+  height: 10px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 5px;
+  overflow: hidden;
+  z-index: 10;
+  pointer-events: none;
+}
+
+#speed-bar {
+  height: 100%;
+  width: 30%;
+  background: linear-gradient(90deg, #4fc3f7, #ff9800);
+  border-radius: 5px;
+  transition: width 0.15s;
+}
+
+/* Screens overlay */
+.screen-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.75);
+  z-index: 100;
+  color: #fff;
+  text-align: center;
+  backdrop-filter: blur(6px);
+}
+
+.screen-overlay.hidden { display: none; }
+
+.screen-overlay h1 {
+  font-size: 52px;
+  margin-bottom: 12px;
+  background: linear-gradient(135deg, #c0c0c0, #f5f5f5);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: none;
+}
+
+.screen-overlay h2 {
+  font-size: 28px;
+  margin-bottom: 8px;
+  color: #e0e0e0;
+}
+
+.screen-overlay p {
+  font-size: 16px;
+  color: #aaa;
+  margin-bottom: 24px;
+}
+
+.btn {
+  pointer-events: auto;
+  padding: 14px 48px;
+  font-size: 20px;
+  font-weight: 700;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-radius: 30px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.12), rgba(255,255,255,0.04));
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.2s;
+  backdrop-filter: blur(4px);
+}
+
+.btn:hover {
+  background: linear-gradient(135deg, rgba(255,255,255,0.25), rgba(255,255,255,0.1));
+  border-color: rgba(255,255,255,0.6);
+  transform: translateY(-2px);
+}
+
+/* Merge animation */
+#merge-screen .merge-anim {
+  width: 200px;
+  height: 200px;
+  margin: 20px auto;
+  position: relative;
+}
+
+.merge-ball {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #e0e0e0, #888, #444);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation: mergeIn 1.2s ease-in-out forwards;
+}
+
+.merge-ball.b1 { animation-name: mergeLeft; }
+.merge-ball.b2 { animation-name: mergeRight; }
+.merge-ball.big {
+  width: 0; height: 0;
+  animation: mergeBig 0.8s 1s ease-out forwards;
+}
+
+@keyframes mergeLeft {
+  0% { transform: translate(-120%, -50%); }
+  100% { transform: translate(-50%, -50%); opacity: 0; }
+}
+@keyframes mergeRight {
+  0% { transform: translate(20%, -50%); }
+  100% { transform: translate(-50%, -50%); opacity: 0; }
+}
+@keyframes mergeBig {
+  0% { width: 0; height: 0; opacity: 0; }
+  50% { opacity: 1; }
+  100% { width: 90px; height: 90px; opacity: 1; }
+}
