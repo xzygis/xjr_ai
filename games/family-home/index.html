@@ -1,0 +1,1877 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>温馨家庭 - Family Home</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #2c1810;
+  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100vh;
+}
+#ui-bar {
+  width: 100%;
+  max-width: 1000px;
+  background: linear-gradient(135deg, #f8e8d0, #fdf5e6);
+  border-bottom: 3px solid #d4a76a;
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 10;
+  border-radius: 0 0 12px 12px;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+}
+#time-display {
+  font-size: 18px;
+  font-weight: bold;
+  color: #5a3e2b;
+}
+#time-display span {
+  margin: 0 8px;
+  color: #8b5e3c;
+}
+#scene-indicator {
+  font-size: 14px;
+  color: #d4a76a;
+  font-weight: bold;
+}
+#speed-controls button {
+  padding: 6px 14px;
+  margin-left: 6px;
+  border: 2px solid #d4a76a;
+  border-radius: 8px;
+  background: #fff8ee;
+  color: #5a3e2b;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+#speed-controls button:hover {
+  background: #f5deb3;
+}
+#speed-controls button.active {
+  background: #d4a76a;
+  color: #fff;
+}
+#game-canvas {
+  border: 4px solid #8b5e3c;
+  border-radius: 12px;
+  margin-top: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  cursor: pointer;
+}
+#dialog-bubble {
+  position: fixed;
+  display: none;
+  background: #fff;
+  border: 2px solid #d4a76a;
+  border-radius: 16px;
+  padding: 12px 18px;
+  font-size: 14px;
+  color: #333;
+  max-width: 220px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  z-index: 100;
+  animation: popIn 0.3s ease;
+}
+#dialog-bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 30px;
+  border-width: 10px 8px 0 8px;
+  border-style: solid;
+  border-color: #fff transparent transparent transparent;
+}
+@keyframes popIn {
+  0% { transform: scale(0.5); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+#event-banner {
+  position: fixed;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #ff9a56, #ff6b6b);
+  color: #fff;
+  padding: 12px 30px;
+  border-radius: 30px;
+  font-size: 16px;
+  font-weight: bold;
+  display: none;
+  z-index: 99;
+  box-shadow: 0 4px 15px rgba(255,107,107,0.4);
+  animation: slideDown 0.5s ease;
+}
+@keyframes slideDown {
+  0% { top: -50px; opacity: 0; }
+  100% { top: 80px; opacity: 1; }
+}
+/* 开场对话 overlay */
+#intro-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.7);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 200;
+}
+#intro-box {
+  width: 90%;
+  max-width: 800px;
+  background: linear-gradient(180deg, #fff8ee, #fdf5e6);
+  border: 3px solid #d4a76a;
+  border-radius: 20px 20px 0 0;
+  padding: 30px 40px;
+  margin-bottom: 0;
+  min-height: 180px;
+  position: relative;
+}
+#intro-speaker {
+  font-size: 18px;
+  font-weight: bold;
+  color: #d4a76a;
+  margin-bottom: 12px;
+}
+#intro-text {
+  font-size: 16px;
+  color: #333;
+  line-height: 1.8;
+}
+#intro-next {
+  position: absolute;
+  bottom: 15px;
+  right: 30px;
+  font-size: 13px;
+  color: #999;
+  animation: blink 1.2s infinite;
+}
+@keyframes blink {
+  0%,100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+/* 作业本弹窗 */
+#homework-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 150;
+}
+#homework-box {
+  width: 400px;
+  background: #fffef0;
+  border: 3px solid #d4a76a;
+  border-radius: 16px;
+  padding: 30px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+}
+#homework-box h3 {
+  color: #5a3e2b;
+  margin-bottom: 15px;
+  font-size: 18px;
+}
+#homework-box .hw-subject {
+  color: #d4a76a;
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+#homework-box textarea {
+  width: 100%;
+  height: 120px;
+  border: 2px solid #e8d5b7;
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 14px;
+  font-family: inherit;
+  resize: none;
+  background: #fff;
+}
+#homework-box button {
+  margin-top: 12px;
+  padding: 8px 20px;
+  border: 2px solid #d4a76a;
+  border-radius: 8px;
+  background: #d4a76a;
+  color: #fff;
+  font-weight: bold;
+  cursor: pointer;
+  margin-right: 10px;
+}
+#homework-box button.cancel-btn {
+  background: #fff8ee;
+  color: #5a3e2b;
+}
+</style>
+</head>
+<body>
+<div id="ui-bar">
+  <div id="time-display">
+    <span id="day-text">星期一</span>
+    <span id="time-text">07:00</span>
+    <span id="scene-indicator">🏠 家</span>
+  </div>
+  <div id="speed-controls">
+    <button onclick="setSpeed(1)" class="active">1x</button>
+    <button onclick="setSpeed(3)">3x</button>
+    <button onclick="setSpeed(10)">10x</button>
+    <button onclick="setSpeed(30)">30x</button>
+  </div>
+</div>
+<canvas id="game-canvas"></canvas>
+<div id="dialog-bubble"></div>
+<div id="event-banner"></div>
+
+<!-- 开场对话 -->
+<div id="intro-overlay">
+  <div id="intro-box">
+    <div id="intro-speaker"></div>
+    <div id="intro-text"></div>
+    <div id="intro-next">▼ 点击继续</div>
+  </div>
+</div>
+
+<!-- 作业本弹窗 -->
+<div id="homework-overlay">
+  <div id="homework-box">
+    <h3>📒 我的作业本</h3>
+    <div class="hw-subject" id="hw-subject"></div>
+    <textarea id="hw-textarea" placeholder="在这里写作业..."></textarea>
+    <div>
+      <button onclick="submitHomework()">✏️ 完成</button>
+      <button class="cancel-btn" onclick="closeHomework()">关闭</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('game-canvas');
+const ctx = canvas.getContext('2d');
+const W = 960, H = 600;
+canvas.width = W; canvas.height = H;
+
+// ============ INTRO DIALOG SYSTEM ============
+const introDialogs = [
+  { speaker: '🏠 旁白', text: '欢迎来到我们温馨的小家！这是一个充满爱与欢笑的地方~' },
+  { speaker: '👨 爸爸', text: '大家好！我是这个家的爸爸，平时在家用电脑工作，早上喜欢看报纸。' },
+  { speaker: '👩 妈妈', text: '我是妈妈，每天给全家做好吃的饭菜，把家里打扫得干干净净~' },
+  { speaker: '👵 奶奶', text: '我是奶奶！平时喜欢坐在沙发上看手机直播，每天送孩子们上学。' },
+  { speaker: '👦 弟弟', text: '我是弟弟！我最喜欢玩耍了，和哥哥一起上学好开心！' },
+  { speaker: '🧒 我', text: '我是家里的大孩子，每天背着书包去学校上课，放学后会认真写作业！' },
+  { speaker: '🏠 旁白', text: '工作日早上8点，奶奶会牵着我和弟弟去上学。在学校里可以听课、写作业。下午3点放学回家，开始新的温馨时光~' },
+  { speaker: '🏠 旁白', text: '准备好了吗？让我们一起度过美好的每一天吧！点击角色和家具可以互动哦~' },
+];
+let introIndex = 0;
+let introActive = true;
+
+function showIntroDialog() {
+  if (introIndex >= introDialogs.length) {
+    document.getElementById('intro-overlay').style.display = 'none';
+    introActive = false;
+    return;
+  }
+  const d = introDialogs[introIndex];
+  document.getElementById('intro-speaker').textContent = d.speaker;
+  document.getElementById('intro-text').textContent = d.text;
+}
+
+document.getElementById('intro-overlay').addEventListener('click', () => {
+  introIndex++;
+  showIntroDialog();
+});
+
+showIntroDialog();
+
+// ============ TIME SYSTEM ============
+let gameTime = { day: 1, hour: 7, minute: 0 };
+let speedMultiplier = 1;
+let lastTimestamp = 0;
+let timeAccumulator = 0;
+const REAL_SECONDS_PER_GAME_MINUTE = 0.5;
+
+const dayNames = ['星期一','星期二','星期三','星期四','星期五','星期六','星期日'];
+
+function setSpeed(s) {
+  speedMultiplier = s;
+  document.querySelectorAll('#speed-controls button').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+function updateTime(dt) {
+  if (introActive) return;
+  timeAccumulator += dt * speedMultiplier;
+  const minutesToAdd = Math.floor(timeAccumulator / (REAL_SECONDS_PER_GAME_MINUTE * 1000));
+  if (minutesToAdd > 0) {
+    timeAccumulator -= minutesToAdd * REAL_SECONDS_PER_GAME_MINUTE * 1000;
+    gameTime.minute += minutesToAdd;
+    while (gameTime.minute >= 60) {
+      gameTime.minute -= 60;
+      gameTime.hour++;
+    }
+    while (gameTime.hour >= 24) {
+      gameTime.hour -= 24;
+      gameTime.day++;
+      if (gameTime.day > 7) gameTime.day = 1;
+    }
+  }
+  document.getElementById('day-text').textContent = dayNames[gameTime.day - 1];
+  document.getElementById('time-text').textContent =
+    String(gameTime.hour).padStart(2,'0') + ':' + String(gameTime.minute).padStart(2,'0');
+}
+
+function isWeekend() { return gameTime.day >= 6; }
+
+// ============ SCENE SYSTEM ============
+let currentScene = 'home'; // 'home' or 'school'
+
+function updateSceneIndicator() {
+  const el = document.getElementById('scene-indicator');
+  el.textContent = currentScene === 'home' ? '🏠 家' : '🏫 学校';
+}
+
+// ============ FURNITURE ============
+const furniture = [
+  { id: 'sofa', name: '沙发', room: 'livingRoom', x: 80, y: 280, w: 180, h: 80 },
+  { id: 'fan', name: '电风扇', room: 'livingRoom', x: 350, y: 150, w: 60, h: 100 },
+  { id: 'table', name: '桌子', room: 'livingRoom', x: 150, y: 430, w: 160, h: 80 },
+  { id: 'computer', name: '电脑', room: 'bedroom', x: 620, y: 150, w: 100, h: 80 },
+  { id: 'globe', name: '地球仪', room: 'bedroom', x: 780, y: 160, w: 50, h: 70 },
+  { id: 'bed', name: '床', room: 'bedroom', x: 600, y: 350, w: 180, h: 120 },
+  { id: 'bag', name: '书包', room: 'bedroom', x: 820, y: 400, w: 50, h: 60 },
+];
+
+// ============ CHARACTERS ============
+const characters = [
+  { id: 'dad', name: '爸爸', x: 200, y: 450, targetX: 200, targetY: 450, color: '#4a6fa5', state: 'idle' },
+  { id: 'mom', name: '妈妈', x: 300, y: 430, targetX: 300, targetY: 430, color: '#e88fac', state: 'idle' },
+  { id: 'brother', name: '弟弟', x: 400, y: 350, targetX: 400, targetY: 350, color: '#6bc46d', state: 'idle' },
+  { id: 'grandma', name: '奶奶', x: 120, y: 290, targetX: 120, targetY: 290, color: '#9b7653', state: 'idle' },
+  { id: 'me', name: '我', x: 700, y: 300, targetX: 700, targetY: 300, color: '#5bb3e0', state: 'idle' },
+];
+
+const dialogs = {
+  dad: ['今天工作很顺利！', '晚上我们一起看电影吧', '你作业写完了吗？', '周末我们去公园吧！'],
+  mom: ['饭快好了，再等一下~', '今天想吃什么呀？', '记得多喝水哦', '妈妈爱你们！'],
+  brother: ['哥哥陪我玩！', '我要看动画片~', '今天学了新儿歌！', '我好开心呀！'],
+  grandma: ['这个主播讲得真好~', '来吃奶奶做的点心', '要好好学习啊', '今天天气真不错'],
+  me: ['我要好好学习！', '今天学了好多新知识', '我想玩一会儿', '作业快写完了！'],
+};
+
+const itemDialogs = {
+  sofa: '好舒服的沙发~坐下来歇歇吧',
+  fan: '呼呼~凉风习习好舒服',
+  table: '桌子上放着水果和杂志',
+  computer: '电脑里有好多学习资料',
+  globe: '转一转地球仪，看看世界各地',
+  bed: '好想躺下来睡一觉...',
+  bag: '书包里装满了课本和文具',
+};
+
+// ============ GAME STATE ============
+let schoolAnimation = { active: false, progress: 0, returning: false, phase: '' };
+let eventText = '';
+let eventTimer = 0;
+let schoolTriggered = false;
+let returnTriggered = false;
+let fanAngle = 0;
+let backpackShowTimer = 0;
+
+// ============ SCHOOL SCENE DATA ============
+const SCHOOL_ROWS = 7;
+const SCHOOL_COLS = 6;
+const MY_SEAT = { row: 3, col: 3 }; // 我的座位（第4排第4列，0-based）
+const studentColors = [];
+// 生成43个同学颜色
+const colorPool = ['#ff6b6b','#ffa502','#ff6348','#7bed9f','#70a1ff','#5352ed','#ff4757',
+  '#2ed573','#1e90ff','#3742fa','#a4b0be','#dfe6e9','#fd79a8','#e17055','#00b894',
+  '#0984e3','#6c5ce7','#fdcb6e','#e84393','#00cec9','#fab1a0','#74b9ff','#55efc4'];
+for (let i = 0; i < 43; i++) {
+  studentColors.push(colorPool[i % colorPool.length]);
+}
+
+const teachers = [
+  { name: '语文老师', color: '#e84393', subject: '语文', contents: ['床前明月光，疑是地上霜','锄禾日当午，汗滴禾下土','白日依山尽，黄河入海流','春眠不觉晓，处处闻啼鸟'] },
+  { name: '数学老师', color: '#0984e3', subject: '数学', contents: ['2 + 3 = 5','12 × 8 = 96','△ABC ∽ △DEF','π ≈ 3.14159'] },
+  { name: '英语老师', color: '#00b894', subject: '英语', contents: ['Hello, how are you?','Apple, Banana, Cat','I love my family!','Good morning, class!'] },
+];
+
+let currentTeacherIndex = 0;
+let blackboardText = '';
+let blackboardWriteProgress = 0;
+let blackboardChangeTimer = 0;
+
+// 作业本系统
+let homeworkOpen = false;
+
+function getSubjectByTime() {
+  const h = gameTime.hour;
+  if (h >= 8 && h < 10) return 0; // 语文
+  if (h >= 10 && h < 12) return 1; // 数学
+  if (h >= 12 && h < 15) return 2; // 英语
+  return 0;
+}
+
+// ============ DRAWING FUNCTIONS (HOME SCENE) ============
+
+function drawBackground() {
+  let skyR, skyG, skyB;
+  if (gameTime.hour >= 6 && gameTime.hour < 18) {
+    const t = Math.sin((gameTime.hour - 6) / 12 * Math.PI);
+    skyR = Math.floor(135 + t * 40);
+    skyG = Math.floor(180 + t * 50);
+    skyB = Math.floor(220 + t * 35);
+  } else {
+    skyR = 30; skyG = 40; skyB = 70;
+  }
+
+  const wallGrad = ctx.createLinearGradient(0, 0, 0, H);
+  wallGrad.addColorStop(0, `rgb(${skyR},${skyG},${skyB})`);
+  wallGrad.addColorStop(1, '#e8d5b7');
+  ctx.fillStyle = wallGrad;
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.fillStyle = '#c4956a';
+  ctx.fillRect(0, H - 120, W, 120);
+  ctx.strokeStyle = '#a07850';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < W; i += 80) {
+    ctx.beginPath();
+    ctx.moveTo(i, H - 120);
+    ctx.lineTo(i, H);
+    ctx.stroke();
+  }
+
+  ctx.fillStyle = '#8b6f4e';
+  ctx.fillRect(520, 80, 8, 500);
+
+  ctx.fillStyle = '#f5e6d0';
+  ctx.fillRect(20, 80, 500, 400);
+  ctx.fillStyle = '#f0e0cc';
+  ctx.fillRect(540, 80, 400, 400);
+
+  drawWindow(250, 100, 120, 90);
+  drawWindow(700, 100, 100, 90);
+}
+
+function drawWindow(x, y, w, h) {
+  ctx.fillStyle = '#87ceeb';
+  if (gameTime.hour < 6 || gameTime.hour >= 19) ctx.fillStyle = '#1a2a4a';
+  ctx.fillRect(x, y, w, h);
+  ctx.strokeStyle = '#f5f5f5';
+  ctx.lineWidth = 4;
+  ctx.strokeRect(x, y, w, h);
+  ctx.beginPath();
+  ctx.moveTo(x + w/2, y);
+  ctx.lineTo(x + w/2, y + h);
+  ctx.moveTo(x, y + h/2);
+  ctx.lineTo(x + w, y + h/2);
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(255,182,130,0.6)';
+  ctx.fillRect(x - 10, y - 5, 25, h + 10);
+  ctx.fillRect(x + w - 15, y - 5, 25, h + 10);
+}
+
+function drawSofa(f) {
+  const {x, y, w, h} = f;
+  ctx.fillStyle = '#6b4c8a';
+  ctx.beginPath();
+  ctx.roundRect(x, y - 20, w, 30, 8);
+  ctx.fill();
+  ctx.fillStyle = '#8b6baa';
+  ctx.beginPath();
+  ctx.roundRect(x, y, w, h, 10);
+  ctx.fill();
+  ctx.fillStyle = '#a084c4';
+  ctx.beginPath();
+  ctx.roundRect(x + 10, y + 10, w/2 - 15, h - 20, 8);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.roundRect(x + w/2 + 5, y + 10, w/2 - 15, h - 20, 8);
+  ctx.fill();
+  ctx.fillStyle = '#5a3d75';
+  ctx.beginPath();
+  ctx.roundRect(x - 10, y, 15, h, 6);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.roundRect(x + w - 5, y, 15, h, 6);
+  ctx.fill();
+}
+
+function drawFan(f) {
+  const {x, y, w, h} = f;
+  ctx.fillStyle = '#888';
+  ctx.fillRect(x + w/2 - 4, y + 40, 8, h - 40);
+  ctx.fillStyle = '#666';
+  ctx.beginPath();
+  ctx.ellipse(x + w/2, y + h, 25, 10, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#aaa';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(x + w/2, y + 25, 25, 0, Math.PI * 2);
+  ctx.stroke();
+  fanAngle += 0.15 * speedMultiplier;
+  ctx.save();
+  ctx.translate(x + w/2, y + 25);
+  for (let i = 0; i < 3; i++) {
+    ctx.rotate(Math.PI * 2 / 3);
+    ctx.fillStyle = 'rgba(100,150,200,0.7)';
+    ctx.beginPath();
+    ctx.ellipse(12, 0, 15, 5, fanAngle + i * 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawTable(f) {
+  const {x, y, w, h} = f;
+  ctx.fillStyle = '#a0724e';
+  ctx.shadowColor = 'rgba(0,0,0,0.2)';
+  ctx.shadowBlur = 5;
+  ctx.beginPath();
+  ctx.roundRect(x, y, w, h * 0.4, 6);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = '#7a5230';
+  ctx.fillRect(x + 10, y + h * 0.4, 8, h * 0.6);
+  ctx.fillRect(x + w - 18, y + h * 0.4, 8, h * 0.6);
+  ctx.fillStyle = '#ff6347';
+  ctx.beginPath();
+  ctx.arc(x + 50, y + 10, 8, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#32cd32';
+  ctx.beginPath();
+  ctx.arc(x + 80, y + 12, 7, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawComputer(f) {
+  const {x, y, w, h} = f;
+  ctx.fillStyle = '#222';
+  ctx.beginPath();
+  ctx.roundRect(x, y, w, h * 0.7, 5);
+  ctx.fill();
+  ctx.fillStyle = '#4a9eff';
+  if (gameTime.hour >= 20 || gameTime.hour < 6) ctx.fillStyle = '#1a3a5a';
+  ctx.fillRect(x + 5, y + 5, w - 10, h * 0.7 - 10);
+  ctx.fillStyle = '#444';
+  ctx.fillRect(x + w/2 - 8, y + h * 0.7, 16, 15);
+  ctx.fillStyle = '#333';
+  ctx.beginPath();
+  ctx.roundRect(x + 15, y + h * 0.7 + 15, w - 30, 8, 3);
+  ctx.fill();
+  ctx.fillStyle = '#555';
+  ctx.beginPath();
+  ctx.roundRect(x + 5, y + h - 10, w - 10, 12, 3);
+  ctx.fill();
+}
+
+function drawGlobe(f) {
+  const {x, y, w, h} = f;
+  ctx.fillStyle = '#8b6914';
+  ctx.fillRect(x + w/2 - 3, y + h * 0.6, 6, h * 0.4);
+  ctx.fillStyle = '#a07818';
+  ctx.beginPath();
+  ctx.ellipse(x + w/2, y + h, 15, 5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  const r = Math.min(w, h * 0.6) / 2;
+  ctx.fillStyle = '#4a90d9';
+  ctx.beginPath();
+  ctx.arc(x + w/2, y + r, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#5cb85c';
+  ctx.beginPath();
+  ctx.arc(x + w/2 - 5, y + r - 3, r * 0.4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(x + w/2 + 8, y + r + 5, r * 0.3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#8b6914';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.ellipse(x + w/2, y + r, r + 3, r + 3, 0.3, 0, Math.PI * 2);
+  ctx.stroke();
+}
+
+function drawBed(f) {
+  const {x, y, w, h} = f;
+  ctx.fillStyle = '#8b6c4a';
+  ctx.beginPath();
+  ctx.roundRect(x, y, w, h, 8);
+  ctx.fill();
+  ctx.fillStyle = '#fff8ee';
+  ctx.beginPath();
+  ctx.roundRect(x + 8, y + 8, w - 16, h - 16, 6);
+  ctx.fill();
+  ctx.fillStyle = '#ffb6c1';
+  ctx.beginPath();
+  ctx.roundRect(x + 8, y + h * 0.4, w - 16, h * 0.55, 6);
+  ctx.fill();
+  ctx.fillStyle = '#fffaf0';
+  ctx.beginPath();
+  ctx.roundRect(x + 20, y + 15, 60, 30, 12);
+  ctx.fill();
+  ctx.fillStyle = '#6b4c33';
+  ctx.beginPath();
+  ctx.roundRect(x - 5, y - 15, w + 10, 20, 6);
+  ctx.fill();
+}
+
+function drawBag(f) {
+  const {x, y, w, h} = f;
+  ctx.fillStyle = '#2979ff';
+  ctx.beginPath();
+  ctx.roundRect(x, y + 10, w, h - 10, 8);
+  ctx.fill();
+  ctx.fillStyle = '#1565c0';
+  ctx.beginPath();
+  ctx.roundRect(x + 5, y, w - 10, 20, 5);
+  ctx.fill();
+  ctx.strokeStyle = '#1a237e';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(x + w/2, y - 5, 12, Math.PI, 0);
+  ctx.stroke();
+  ctx.strokeStyle = '#ffd700';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x + 8, y + 25);
+  ctx.lineTo(x + w - 8, y + 25);
+  ctx.stroke();
+}
+
+function drawFurniture() {
+  furniture.forEach(f => {
+    switch(f.id) {
+      case 'sofa': drawSofa(f); break;
+      case 'fan': drawFan(f); break;
+      case 'table': drawTable(f); break;
+      case 'computer': drawComputer(f); break;
+      case 'globe': drawGlobe(f); break;
+      case 'bed': drawBed(f); break;
+      case 'bag': drawBag(f); break;
+    }
+  });
+}
+
+// ============ CHARACTER DRAWING ============
+
+function drawCharacter(ch) {
+  if (currentScene === 'school' && (ch.id === 'me' || ch.id === 'brother')) return;
+  if (schoolAnimation.active && (ch.id === 'me' || ch.id === 'brother' || ch.id === 'grandma')) return;
+
+  const x = ch.x, y = ch.y;
+  switch(ch.id) {
+    case 'dad': drawDad(x, y); break;
+    case 'mom': drawMom(x, y); break;
+    case 'brother': drawBrother(x, y); break;
+    case 'grandma': drawGrandma(x, y); break;
+    case 'me': drawMe(x, y); break;
+  }
+}
+
+function drawDad(x, y) {
+  ctx.fillStyle = '#4a7fb5';
+  ctx.beginPath();
+  ctx.roundRect(x - 16, y - 10, 32, 40, 6);
+  ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.moveTo(x - 5, y - 10);
+  ctx.lineTo(x, y);
+  ctx.lineTo(x + 5, y - 10);
+  ctx.fill();
+  ctx.fillStyle = '#3d3d3d';
+  ctx.fillRect(x - 14, y + 30, 12, 25);
+  ctx.fillRect(x + 2, y + 30, 12, 25);
+  ctx.fillStyle = '#2c2c2c';
+  ctx.beginPath();
+  ctx.roundRect(x - 15, y + 53, 14, 7, 3);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.roundRect(x + 1, y + 53, 14, 7, 3);
+  ctx.fill();
+  ctx.fillStyle = '#fdd9b5';
+  ctx.beginPath();
+  ctx.arc(x, y - 25, 18, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#2c2c2c';
+  ctx.beginPath();
+  ctx.arc(x, y - 30, 16, Math.PI, 0);
+  ctx.fill();
+  ctx.fillRect(x - 16, y - 32, 32, 8);
+  ctx.fillStyle = '#333';
+  ctx.beginPath();
+  ctx.ellipse(x - 6, y - 26, 2.5, 3, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(x + 6, y - 26, 2.5, 3, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x - 9, y - 32);
+  ctx.lineTo(x - 3, y - 31);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x + 3, y - 31);
+  ctx.lineTo(x + 9, y - 32);
+  ctx.stroke();
+  ctx.strokeStyle = '#c0392b';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(x, y - 20, 6, 0.2, Math.PI - 0.2);
+  ctx.stroke();
+  ctx.fillStyle = '#4a7fb5';
+  ctx.fillRect(x - 22, y - 5, 8, 30);
+  ctx.fillRect(x + 14, y - 5, 8, 30);
+  ctx.fillStyle = '#fdd9b5';
+  ctx.beginPath();
+  ctx.arc(x - 18, y + 27, 5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(x + 18, y + 27, 5, 0, Math.PI * 2);
+  ctx.fill();
+  if (gameTime.hour >= 7 && gameTime.hour < 9) {
+    ctx.fillStyle = '#f5f0e0';
+    ctx.fillRect(x + 15, y + 10, 25, 18);
+    ctx.strokeStyle = '#999';
+    ctx.lineWidth = 0.5;
+    for (let i = 0; i < 4; i++) {
+      ctx.beginPath();
+      ctx.moveTo(x + 18, y + 14 + i * 4);
+      ctx.lineTo(x + 37, y + 14 + i * 4);
+      ctx.stroke();
+    }
+  }
+}
+
+function drawMom(x, y) {
+  ctx.fillStyle = '#f06292';
+  ctx.beginPath();
+  ctx.moveTo(x - 14, y - 10);
+  ctx.lineTo(x - 22, y + 45);
+  ctx.lineTo(x + 22, y + 45);
+  ctx.lineTo(x + 14, y - 10);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#f8bbd0';
+  for (let i = 0; i < 3; i++) {
+    ctx.beginPath();
+    ctx.arc(x - 5 + i * 8, y + 20 + (i % 2) * 10, 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.fillStyle = '#fdd9b5';
+  ctx.fillRect(x - 8, y + 43, 6, 15);
+  ctx.fillRect(x + 2, y + 43, 6, 15);
+  ctx.fillStyle = '#e91e63';
+  ctx.beginPath();
+  ctx.roundRect(x - 9, y + 56, 8, 5, 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.roundRect(x + 1, y + 56, 8, 5, 2);
+  ctx.fill();
+  ctx.fillStyle = '#fdd9b5';
+  ctx.beginPath();
+  ctx.arc(x, y - 25, 17, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#4a2c17';
+  ctx.beginPath();
+  ctx.arc(x, y - 28, 16, Math.PI, 0);
+  ctx.fill();
+  ctx.fillRect(x - 16, y - 30, 5, 25);
+  ctx.fillRect(x + 11, y - 30, 5, 25);
+  ctx.fillStyle = '#ff4081';
+  ctx.beginPath();
+  ctx.arc(x + 13, y - 30, 4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#333';
+  ctx.beginPath();
+  ctx.ellipse(x - 5, y - 26, 2, 3, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(x + 5, y - 26, 2, 3, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x - 7, y - 29);
+  ctx.lineTo(x - 5, y - 28);
+  ctx.moveTo(x + 5, y - 28);
+  ctx.lineTo(x + 7, y - 29);
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(255,150,150,0.4)';
+  ctx.beginPath();
+  ctx.ellipse(x - 10, y - 20, 4, 3, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(x + 10, y - 20, 4, 3, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#e91e63';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(x, y - 20, 5, 0.3, Math.PI - 0.3);
+  ctx.stroke();
+  ctx.fillStyle = '#fdd9b5';
+  ctx.fillRect(x - 20, y - 5, 7, 25);
+  ctx.fillRect(x + 13, y - 5, 7, 25);
+  if (gameTime.hour >= 11 && gameTime.hour < 13 || gameTime.hour >= 17 && gameTime.hour < 19) {
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.roundRect(x - 12, y + 5, 24, 30, 4);
+    ctx.fill();
+    ctx.strokeStyle = '#ddd';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x - 12, y + 5, 24, 30);
+  }
+}
+
+function drawBrother(x, y) {
+  ctx.fillStyle = '#ff9800';
+  ctx.beginPath();
+  ctx.roundRect(x - 12, y - 5, 24, 28, 5);
+  ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.font = '12px Arial';
+  ctx.textAlign = 'center';
+  ctx.fillText('★', x, y + 14);
+  ctx.fillStyle = '#4caf50';
+  ctx.fillRect(x - 11, y + 23, 10, 14);
+  ctx.fillRect(x + 1, y + 23, 10, 14);
+  ctx.fillStyle = '#fdd9b5';
+  ctx.fillRect(x - 7, y + 37, 5, 10);
+  ctx.fillRect(x + 2, y + 37, 5, 10);
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.roundRect(x - 8, y + 46, 7, 5, 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.roundRect(x + 1, y + 46, 7, 5, 2);
+  ctx.fill();
+  ctx.fillStyle = '#fdd9b5';
+  ctx.beginPath();
+  ctx.arc(x, y - 18, 15, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#2c2c2c';
+  ctx.beginPath();
+  ctx.moveTo(x - 12, y - 22);
+  ctx.lineTo(x - 8, y - 35);
+  ctx.lineTo(x - 3, y - 25);
+  ctx.lineTo(x + 2, y - 36);
+  ctx.lineTo(x + 7, y - 24);
+  ctx.lineTo(x + 12, y - 33);
+  ctx.lineTo(x + 14, y - 20);
+  ctx.arc(x, y - 22, 14, -0.3, Math.PI + 0.3, true);
+  ctx.fill();
+  ctx.fillStyle = '#333';
+  ctx.beginPath();
+  ctx.arc(x - 5, y - 19, 3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(x + 5, y - 19, 3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(x - 4, y - 20, 1.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(x + 6, y - 20, 1.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#e64a19';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(x, y - 13, 6, 0.2, Math.PI - 0.2);
+  ctx.stroke();
+  ctx.fillStyle = '#fdd9b5';
+  ctx.fillRect(x - 17, y - 2, 6, 20);
+  ctx.fillRect(x + 11, y - 2, 6, 20);
+}
+
+function drawGrandma(x, y) {
+  ctx.fillStyle = '#8d6e63';
+  ctx.beginPath();
+  ctx.roundRect(x - 16, y - 8, 32, 42, 6);
+  ctx.fill();
+  ctx.strokeStyle = '#ffcc80';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x, y - 8);
+  ctx.lineTo(x, y + 34);
+  ctx.stroke();
+  ctx.fillStyle = '#ffcc80';
+  ctx.beginPath();
+  ctx.moveTo(x - 6, y - 8);
+  ctx.lineTo(x, y + 2);
+  ctx.lineTo(x + 6, y - 8);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#5d4037';
+  ctx.fillRect(x - 14, y + 34, 12, 18);
+  ctx.fillRect(x + 2, y + 34, 12, 18);
+  ctx.fillStyle = '#3e2723';
+  ctx.beginPath();
+  ctx.roundRect(x - 14, y + 50, 12, 6, 3);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.roundRect(x + 2, y + 50, 12, 6, 3);
+  ctx.fill();
+  ctx.fillStyle = '#fdd9b5';
+  ctx.beginPath();
+  ctx.arc(x, y - 22, 16, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#9e9e9e';
+  ctx.beginPath();
+  ctx.arc(x, y - 28, 14, Math.PI, 0);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(x, y - 36, 7, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#666';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(x - 6, y - 22, 5, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(x + 6, y - 22, 5, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x - 1, y - 22);
+  ctx.lineTo(x + 1, y - 22);
+  ctx.stroke();
+  ctx.fillStyle = '#333';
+  ctx.beginPath();
+  ctx.arc(x - 6, y - 22, 1.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(x + 6, y - 22, 1.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#c0392b';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.arc(x, y - 16, 5, 0.3, Math.PI - 0.3);
+  ctx.stroke();
+  ctx.fillStyle = '#8d6e63';
+  ctx.fillRect(x - 22, y - 3, 7, 25);
+  ctx.fillRect(x + 15, y - 3, 7, 25);
+  ctx.fillStyle = '#fdd9b5';
+  ctx.beginPath();
+  ctx.arc(x - 18, y + 23, 4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(x + 18, y + 23, 4, 0, Math.PI * 2);
+  ctx.fill();
+  if (!schoolAnimation.active && currentScene === 'home' && (gameTime.hour >= 9 && gameTime.hour < 12 || gameTime.hour >= 14 && gameTime.hour < 17 || gameTime.hour >= 19 && gameTime.hour < 22)) {
+    ctx.fillStyle = '#333';
+    ctx.beginPath();
+    ctx.roundRect(x + 12, y + 5, 20, 30, 3);
+    ctx.fill();
+    ctx.fillStyle = '#4fc3f7';
+    ctx.fillRect(x + 14, y + 8, 16, 24);
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.moveTo(x + 19, y + 15);
+    ctx.lineTo(x + 19, y + 25);
+    ctx.lineTo(x + 27, y + 20);
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+
+function drawMe(x, y) {
+  ctx.fillStyle = '#1976d2';
+  ctx.beginPath();
+  ctx.roundRect(x - 14, y - 8, 28, 35, 5);
+  ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.moveTo(x - 6, y - 8);
+  ctx.lineTo(x, y + 2);
+  ctx.lineTo(x + 6, y - 8);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#ffd700';
+  ctx.beginPath();
+  ctx.arc(x + 8, y + 2, 4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#1a237e';
+  ctx.fillRect(x - 12, y + 27, 10, 20);
+  ctx.fillRect(x + 2, y + 27, 10, 20);
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.roundRect(x - 12, y + 45, 11, 6, 3);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.roundRect(x + 2, y + 45, 11, 6, 3);
+  ctx.fill();
+  ctx.fillStyle = '#fdd9b5';
+  ctx.beginPath();
+  ctx.arc(x, y - 22, 16, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#2c2c2c';
+  ctx.beginPath();
+  ctx.arc(x, y - 26, 15, Math.PI + 0.3, -0.3);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(x - 12, y - 28);
+  ctx.quadraticCurveTo(x - 6, y - 20, x - 2, y - 28);
+  ctx.quadraticCurveTo(x + 4, y - 18, x + 10, y - 27);
+  ctx.lineTo(x + 14, y - 30);
+  ctx.lineTo(x - 14, y - 30);
+  ctx.fill();
+  ctx.fillStyle = '#333';
+  ctx.beginPath();
+  ctx.ellipse(x - 5, y - 22, 2.5, 3, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(x + 5, y - 22, 2.5, 3, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(x - 4, y - 23, 1, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(x + 6, y - 23, 1, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#e64a19';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(x, y - 16, 5, 0.2, Math.PI - 0.2);
+  ctx.stroke();
+  ctx.fillStyle = '#1976d2';
+  ctx.fillRect(x - 20, y - 4, 7, 25);
+  ctx.fillRect(x + 13, y - 4, 7, 25);
+  ctx.fillStyle = '#fdd9b5';
+  ctx.beginPath();
+  ctx.arc(x - 16, y + 22, 4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(x + 16, y + 22, 4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#2979ff';
+  ctx.beginPath();
+  ctx.roundRect(x - 18, y - 5, 10, 25, 4);
+  ctx.fill();
+  ctx.fillStyle = '#1565c0';
+  ctx.beginPath();
+  ctx.roundRect(x - 17, y - 3, 8, 8, 3);
+  ctx.fill();
+}
+
+// ============ CHARACTER MOVEMENT & BEHAVIOR ============
+
+function updateCharacterBehaviors() {
+  if (currentScene === 'school') return; // 学校场景时不更新家庭移动
+
+  const h = gameTime.hour;
+
+  const dad = characters[0];
+  if (h >= 7 && h < 9) { dad.targetX = 200; dad.targetY = 450; }
+  else if (h >= 9 && h < 17) { dad.targetX = 650; dad.targetY = 200; }
+  else if (h >= 17 && h < 20) { dad.targetX = 200; dad.targetY = 420; }
+  else { dad.targetX = 650; dad.targetY = 400; }
+
+  const mom = characters[1];
+  if ((h >= 7 && h < 8) || (h >= 11 && h < 13) || (h >= 17 && h < 19)) {
+    mom.targetX = 300; mom.targetY = 480;
+  } else if (h >= 9 && h < 11) {
+    mom.targetX = 380; mom.targetY = 350;
+  } else if (h >= 20) {
+    mom.targetX = 700; mom.targetY = 420;
+  } else {
+    mom.targetX = 250; mom.targetY = 380;
+  }
+
+  const bro = characters[2];
+  if (h >= 7 && h < 8) { bro.targetX = 350; bro.targetY = 450; }
+  else if (h >= 15 && h < 19) { bro.targetX = 380; bro.targetY = 320; }
+  else if (h >= 19 && h < 21) { bro.targetX = 300; bro.targetY = 300; }
+  else { bro.targetX = 700; bro.targetY = 430; }
+
+  const gma = characters[3];
+  if (h >= 6 && h < 8) { gma.targetX = 300; gma.targetY = 480; }
+  else if (h >= 9 && h < 12 || h >= 14 && h < 17 || h >= 19 && h < 22) {
+    gma.targetX = 150; gma.targetY = 300;
+  } else {
+    gma.targetX = 120; gma.targetY = 350;
+  }
+
+  const me = characters[4];
+  if (h >= 15 && h < 18) { me.targetX = 680; me.targetY = 230; }
+  else if (h >= 18 && h < 20) { me.targetX = 400; me.targetY = 350; }
+  else if (h >= 20 && h < 22) { me.targetX = 700; me.targetY = 280; }
+  else { me.targetX = 660; me.targetY = 380; }
+
+  characters.forEach(ch => {
+    const dx = ch.targetX - ch.x;
+    const dy = ch.targetY - ch.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist > 2) {
+      const speed = 0.5 * speedMultiplier;
+      ch.x += (dx / dist) * Math.min(speed, dist);
+      ch.y += (dy / dist) * Math.min(speed, dist);
+    }
+  });
+}
+
+// ============ SCHOOL SYSTEM (IMPROVED) ============
+
+function updateSchoolSystem() {
+  const h = gameTime.hour;
+  const m = gameTime.minute;
+
+  // 触发上学：显示背书包动画后走出
+  if (!isWeekend() && h === 7 && m >= 50 && m < 55 && !schoolTriggered && !schoolAnimation.active && currentScene === 'home') {
+    schoolTriggered = true;
+    backpackShowTimer = 1500; // 显示"背上书包"持续1.5秒
+    showEvent('🎒 背上书包，准备上学啦！');
+  }
+
+  // 背书包提示结束后开始走路动画
+  if (backpackShowTimer > 0) {
+    backpackShowTimer -= 16 * speedMultiplier;
+    if (backpackShowTimer <= 0) {
+      schoolAnimation = { active: true, progress: 0, returning: false, phase: 'leaving' };
+      showEvent('🏫 奶奶牵着我和弟弟去上学啦！');
+    }
+  }
+
+  // 触发放学
+  if (!isWeekend() && h === 15 && m >= 0 && m < 5 && !returnTriggered && !schoolAnimation.active && currentScene === 'school') {
+    returnTriggered = true;
+    currentScene = 'home';
+    updateSceneIndicator();
+    schoolAnimation = { active: true, progress: 0, returning: true, phase: 'returning' };
+    showEvent('🏠 放学回家啦！');
+    // 恢复角色位置
+    characters[2].x = 380; characters[2].y = 320;
+    characters[3].x = 150; characters[3].y = 300;
+    characters[4].x = 680; characters[4].y = 230;
+  }
+
+  // 重置触发器
+  if (h === 9) schoolTriggered = false;
+  if (h === 16) returnTriggered = false;
+
+  // 更新走路动画
+  if (schoolAnimation.active) {
+    schoolAnimation.progress += 0.005 * speedMultiplier;
+    if (schoolAnimation.progress >= 1) {
+      schoolAnimation.active = false;
+      if (!schoolAnimation.returning) {
+        // 到达学校，切换场景
+        currentScene = 'school';
+        updateSceneIndicator();
+        characters[2].x = -100; characters[2].y = -100;
+        characters[4].x = -100; characters[4].y = -100;
+        characters[3].x = 150; characters[3].y = 300;
+      }
+    }
+  }
+
+  // 自动切换到学校场景（如果在学校时间但场景还是home）
+  if (!isWeekend() && h >= 8 && h < 15 && !schoolAnimation.active && currentScene === 'home' && schoolTriggered) {
+    currentScene = 'school';
+    updateSceneIndicator();
+    characters[2].x = -100; characters[2].y = -100;
+    characters[4].x = -100; characters[4].y = -100;
+  }
+
+  // 自动切换回家（保护性逻辑）
+  if ((isWeekend() || h >= 15 || h < 7) && currentScene === 'school' && !schoolAnimation.active) {
+    currentScene = 'home';
+    updateSceneIndicator();
+    if (characters[2].x < 0) { characters[2].x = 380; characters[2].y = 320; }
+    if (characters[4].x < 0) { characters[4].x = 680; characters[4].y = 230; }
+  }
+
+  // 更新黑板内容
+  if (currentScene === 'school') {
+    currentTeacherIndex = getSubjectByTime();
+    blackboardChangeTimer += 16 * speedMultiplier;
+    if (blackboardChangeTimer > 8000) {
+      blackboardChangeTimer = 0;
+      const teacher = teachers[currentTeacherIndex];
+      blackboardText = teacher.contents[Math.floor(Math.random() * teacher.contents.length)];
+      blackboardWriteProgress = 0;
+    }
+    blackboardWriteProgress = Math.min(1, blackboardWriteProgress + 0.01 * speedMultiplier);
+  }
+}
+
+function drawSchoolAnimation() {
+  if (!schoolAnimation.active) return;
+
+  const p = schoolAnimation.progress;
+  let startX, endX;
+
+  if (!schoolAnimation.returning) {
+    startX = 300; endX = W + 50;
+  } else {
+    startX = -50; endX = 300;
+  }
+
+  const currentX = startX + (endX - startX) * p;
+  const baseY = 500;
+  const bob = Math.sin(p * 30) * 3;
+
+  drawGrandma(currentX - 30, baseY + bob);
+  drawMe(currentX + 10, baseY - 5 + bob);
+  drawBrother(currentX + 40, baseY + 10 + bob);
+
+  ctx.strokeStyle = '#fdd9b5';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(currentX - 12, baseY + 20 + bob);
+  ctx.lineTo(currentX + 0, baseY + 15 + bob);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(currentX - 12, baseY + 20 + bob);
+  ctx.lineTo(currentX + 30, baseY + 25 + bob);
+  ctx.stroke();
+}
+
+// ============ SCHOOL SCENE DRAWING ============
+
+function drawSchoolScene() {
+  // 背景色（带昼夜变化）
+  let skyR, skyG, skyB;
+  if (gameTime.hour >= 6 && gameTime.hour < 18) {
+    const t = Math.sin((gameTime.hour - 6) / 12 * Math.PI);
+    skyR = Math.floor(240 + t * 10);
+    skyG = Math.floor(235 + t * 15);
+    skyB = Math.floor(220 + t * 10);
+  } else {
+    skyR = 40; skyG = 45; skyB = 60;
+  }
+
+  // 教室地板
+  ctx.fillStyle = `rgb(${skyR},${skyG},${skyB})`;
+  ctx.fillRect(0, 0, W, H);
+
+  // 教室墙壁
+  ctx.fillStyle = '#f5f0e8';
+  ctx.fillRect(10, 10, W - 20, H - 20);
+
+  // 地板纹理
+  ctx.fillStyle = '#e8ddd0';
+  ctx.fillRect(10, 10, W - 20, H - 20);
+  ctx.strokeStyle = '#d4c8b8';
+  ctx.lineWidth = 0.5;
+  for (let i = 10; i < W - 10; i += 40) {
+    ctx.beginPath();
+    ctx.moveTo(i, 10);
+    ctx.lineTo(i, H - 10);
+    ctx.stroke();
+  }
+
+  // 黑板
+  drawBlackboard();
+
+  // 教师桌
+  drawTeacherDesk();
+
+  // 老师
+  drawTeacher();
+
+  // 书包柜（右侧）
+  drawLockers();
+
+  // 课桌和学生（7排6列）
+  drawDesksAndStudents();
+
+  // 学校昼夜叠加
+  drawSchoolDayNightOverlay();
+}
+
+function drawBlackboard() {
+  const bx = 200, by = 20, bw = 560, bh = 100;
+  // 黑板边框
+  ctx.fillStyle = '#5d4037';
+  ctx.fillRect(bx - 5, by - 5, bw + 10, bh + 10);
+  // 黑板面
+  ctx.fillStyle = '#2e7d32';
+  ctx.fillRect(bx, by, bw, bh);
+  // 粉笔槽
+  ctx.fillStyle = '#8d6e63';
+  ctx.fillRect(bx + 20, by + bh + 2, bw - 40, 8);
+  // 粉笔
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(bx + 30, by + bh + 3, 20, 5);
+  ctx.fillStyle = '#ffeb3b';
+  ctx.fillRect(bx + 55, by + bh + 3, 20, 5);
+
+  // 黑板上的文字（动态书写）
+  if (blackboardText) {
+    const visibleLength = Math.floor(blackboardText.length * blackboardWriteProgress);
+    const visibleText = blackboardText.substring(0, visibleLength);
+    ctx.font = 'bold 22px Microsoft YaHei';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#fff';
+    ctx.fillText(visibleText, bx + bw / 2, by + 55);
+  }
+
+  // 科目标签
+  const teacher = teachers[currentTeacherIndex];
+  ctx.font = '12px Microsoft YaHei';
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#ffeb3b';
+  ctx.fillText(teacher.subject + '课', bx + 10, by + 20);
+}
+
+function drawTeacherDesk() {
+  const tx = 430, ty = 130, tw = 100, th = 40;
+  ctx.fillStyle = '#a0724e';
+  ctx.beginPath();
+  ctx.roundRect(tx, ty, tw, th, 4);
+  ctx.fill();
+  ctx.fillStyle = '#7a5230';
+  ctx.fillRect(tx + 5, ty + th, 5, 15);
+  ctx.fillRect(tx + tw - 10, ty + th, 5, 15);
+  // 书本
+  ctx.fillStyle = '#e53935';
+  ctx.fillRect(tx + 15, ty + 5, 25, 18);
+  ctx.fillStyle = '#1e88e5';
+  ctx.fillRect(tx + 45, ty + 8, 20, 15);
+}
+
+function drawTeacher() {
+  const teacher = teachers[currentTeacherIndex];
+  const tx = 380, ty = 140;
+  // 身体
+  ctx.fillStyle = teacher.color;
+  ctx.beginPath();
+  ctx.roundRect(tx - 12, ty, 24, 35, 5);
+  ctx.fill();
+  // 头
+  ctx.fillStyle = '#fdd9b5';
+  ctx.beginPath();
+  ctx.arc(tx, ty - 14, 14, 0, Math.PI * 2);
+  ctx.fill();
+  // 头发
+  ctx.fillStyle = '#333';
+  ctx.beginPath();
+  ctx.arc(tx, ty - 18, 12, Math.PI, 0);
+  ctx.fill();
+  // 眼睛
+  ctx.fillStyle = '#333';
+  ctx.beginPath();
+  ctx.arc(tx - 4, ty - 14, 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(tx + 4, ty - 14, 2, 0, Math.PI * 2);
+  ctx.fill();
+  // 笑容
+  ctx.strokeStyle = '#c0392b';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.arc(tx, ty - 8, 4, 0.3, Math.PI - 0.3);
+  ctx.stroke();
+  // 手臂（指向黑板）
+  ctx.fillStyle = teacher.color;
+  ctx.save();
+  ctx.translate(tx + 12, ty + 5);
+  ctx.rotate(-0.8);
+  ctx.fillRect(0, -3, 20, 6);
+  ctx.restore();
+  // 教鞭
+  ctx.strokeStyle = '#8d6e63';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(tx + 25, ty - 5);
+  ctx.lineTo(tx + 55, ty - 30);
+  ctx.stroke();
+  // 名牌
+  ctx.font = '10px Microsoft YaHei';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  ctx.beginPath();
+  ctx.roundRect(tx - 20, ty + 38, 40, 14, 3);
+  ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.fillText(teacher.name, tx, ty + 48);
+}
+
+function drawLockers() {
+  const lx = W - 60, ly = 130;
+  ctx.fillStyle = '#90a4ae';
+  ctx.fillRect(lx, ly, 45, 400);
+  // 柜子格
+  for (let i = 0; i < 8; i++) {
+    ctx.strokeStyle = '#607d8b';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(lx + 3, ly + 3 + i * 49, 39, 47);
+    // 小手柄
+    ctx.fillStyle = '#455a64';
+    ctx.fillRect(lx + 35, ly + 22 + i * 49, 5, 8);
+  }
+  // 标签
+  ctx.font = '10px Microsoft YaHei';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#37474f';
+  ctx.save();
+  ctx.translate(lx + 22, ly - 8);
+  ctx.fillText('书包柜', 0, 0);
+  ctx.restore();
+}
+
+function drawDesksAndStudents() {
+  const startX = 80, startY = 190;
+  const deskW = 50, deskH = 30;
+  const gapX = 70, gapY = 55;
+  let studentIndex = 0;
+
+  for (let row = 0; row < SCHOOL_ROWS; row++) {
+    for (let col = 0; col < SCHOOL_COLS; col++) {
+      const dx = startX + col * gapX;
+      const dy = startY + row * gapY;
+
+      // 课桌
+      ctx.fillStyle = '#c8a97e';
+      ctx.beginPath();
+      ctx.roundRect(dx, dy + 12, deskW, deskH, 3);
+      ctx.fill();
+      ctx.strokeStyle = '#a07850';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(dx, dy + 12, deskW, deskH);
+
+      // 桌腿
+      ctx.fillStyle = '#8d6e63';
+      ctx.fillRect(dx + 2, dy + 42, 3, 8);
+      ctx.fillRect(dx + deskW - 5, dy + 42, 3, 8);
+
+      // 学生（Q版小人坐在桌前）
+      const isMe = (row === MY_SEAT.row && col === MY_SEAT.col);
+      const sx = dx + deskW / 2;
+      const sy = dy + 5;
+
+      if (isMe) {
+        drawMiniMe(sx, sy);
+      } else {
+        if (studentIndex < 42) {
+          drawMiniStudent(sx, sy, studentColors[studentIndex]);
+          studentIndex++;
+        }
+      }
+    }
+  }
+}
+
+function drawMiniStudent(x, y, color) {
+  // 小身体
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.roundRect(x - 6, y + 2, 12, 14, 3);
+  ctx.fill();
+  // 小头
+  ctx.fillStyle = '#fdd9b5';
+  ctx.beginPath();
+  ctx.arc(x, y - 4, 7, 0, Math.PI * 2);
+  ctx.fill();
+  // 头发
+  ctx.fillStyle = '#333';
+  ctx.beginPath();
+  ctx.arc(x, y - 6, 6, Math.PI, 0);
+  ctx.fill();
+  // 眼睛
+  ctx.fillStyle = '#333';
+  ctx.beginPath();
+  ctx.arc(x - 2, y - 4, 1.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(x + 2, y - 4, 1.2, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawMiniMe(x, y) {
+  // 身体 - 校服蓝
+  ctx.fillStyle = '#1976d2';
+  ctx.beginPath();
+  ctx.roundRect(x - 7, y + 2, 14, 14, 3);
+  ctx.fill();
+  // 头
+  ctx.fillStyle = '#fdd9b5';
+  ctx.beginPath();
+  ctx.arc(x, y - 4, 8, 0, Math.PI * 2);
+  ctx.fill();
+  // 头发
+  ctx.fillStyle = '#2c2c2c';
+  ctx.beginPath();
+  ctx.arc(x, y - 7, 7, Math.PI + 0.3, -0.3);
+  ctx.fill();
+  // 眼睛
+  ctx.fillStyle = '#333';
+  ctx.beginPath();
+  ctx.arc(x - 3, y - 4, 1.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(x + 3, y - 4, 1.5, 0, Math.PI * 2);
+  ctx.fill();
+  // 高亮
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(x - 2, y - 5, 0.7, 0, Math.PI * 2);
+  ctx.fill();
+  // 标记（发光圈）
+  ctx.strokeStyle = 'rgba(255, 215, 0, 0.7)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(x, y, 14, 0, Math.PI * 2);
+  ctx.stroke();
+  // 名字
+  ctx.font = '8px Microsoft YaHei';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#ffd700';
+  ctx.fillText('我', x, y - 14);
+}
+
+function drawSchoolDayNightOverlay() {
+  const h = gameTime.hour + gameTime.minute / 60;
+  let alpha = 0;
+  if (h < 6) alpha = 0.3;
+  else if (h < 7) alpha = 0.3 * (7 - h);
+  else if (h >= 17 && h < 18) alpha = 0.2 * (h - 17);
+  else if (h >= 18) alpha = 0.2;
+
+  if (alpha > 0) {
+    ctx.fillStyle = `rgba(10, 15, 40, ${alpha})`;
+    ctx.fillRect(0, 0, W, H);
+  }
+}
+
+// ============ EVENT SYSTEM ============
+
+function showEvent(text) {
+  eventText = text;
+  eventTimer = 3000;
+  const banner = document.getElementById('event-banner');
+  banner.textContent = text;
+  banner.style.display = 'block';
+}
+
+function updateEvent(dt) {
+  if (eventTimer > 0) {
+    eventTimer -= dt;
+    if (eventTimer <= 0) {
+      document.getElementById('event-banner').style.display = 'none';
+    }
+  }
+}
+
+// ============ INTERACTION ============
+
+canvas.addEventListener('click', (e) => {
+  if (introActive) return;
+  const rect = canvas.getBoundingClientRect();
+  const mx = (e.clientX - rect.left) * (W / rect.width);
+  const my = (e.clientY - rect.top) * (H / rect.height);
+
+  if (currentScene === 'school') {
+    handleSchoolClick(mx, my, e);
+    return;
+  }
+
+  // 家庭场景点击
+  for (const ch of characters) {
+    if (ch.x < 0) continue;
+    const dx = mx - ch.x;
+    const dy = my - (ch.y - 10);
+    if (Math.abs(dx) < 25 && Math.abs(dy) < 40) {
+      const msgs = dialogs[ch.id];
+      const msg = msgs[Math.floor(Math.random() * msgs.length)];
+      showDialog(ch.name + '：' + msg, e.clientX, e.clientY);
+      return;
+    }
+  }
+
+  for (const f of furniture) {
+    if (mx >= f.x && mx <= f.x + f.w && my >= f.y && my <= f.y + f.h) {
+      showDialog(itemDialogs[f.id], e.clientX, e.clientY);
+      return;
+    }
+  }
+
+  hideDialog();
+});
+
+function handleSchoolClick(mx, my, e) {
+  const startX = 80, startY = 190;
+  const deskW = 50, deskH = 30;
+  const gapX = 70, gapY = 55;
+
+  // 检查是否点击了自己的座位
+  const myDx = startX + MY_SEAT.col * gapX;
+  const myDy = startY + MY_SEAT.row * gapY;
+
+  if (mx >= myDx - 5 && mx <= myDx + deskW + 5 && my >= myDy - 10 && my <= myDy + deskH + 20) {
+    openHomework();
+    return;
+  }
+
+  // 检查是否点击了老师
+  if (mx >= 360 && mx <= 400 && my >= 120 && my <= 180) {
+    const teacher = teachers[currentTeacherIndex];
+    showDialog(teacher.name + '：同学们注意听讲！', e.clientX, e.clientY);
+    return;
+  }
+
+  // 检查是否点击了其他同学
+  for (let row = 0; row < SCHOOL_ROWS; row++) {
+    for (let col = 0; col < SCHOOL_COLS; col++) {
+      if (row === MY_SEAT.row && col === MY_SEAT.col) continue;
+      const dx = startX + col * gapX;
+      const dy = startY + row * gapY;
+      if (mx >= dx && mx <= dx + deskW && my >= dy - 10 && my <= dy + deskH + 10) {
+        const classmateMsgs = ['嘘~在上课呢！', '你也在认真听讲吗？', '下课一起玩吧！', '这道题好难啊...', '我借你橡皮！'];
+        showDialog('同学：' + classmateMsgs[Math.floor(Math.random() * classmateMsgs.length)], e.clientX, e.clientY);
+        return;
+      }
+    }
+  }
+
+  hideDialog();
+}
+
+// ============ HOMEWORK SYSTEM ============
+
+function openHomework() {
+  const teacher = teachers[currentTeacherIndex];
+  document.getElementById('hw-subject').textContent = '当前科目：' + teacher.subject + ' | 老师：' + teacher.name;
+  document.getElementById('hw-textarea').value = '';
+  document.getElementById('hw-textarea').placeholder = teacher.subject === '语文' ? '抄写古诗...' :
+    teacher.subject === '数学' ? '计算题答案...' : '英文句子...';
+  document.getElementById('homework-overlay').style.display = 'flex';
+  homeworkOpen = true;
+}
+
+function closeHomework() {
+  document.getElementById('homework-overlay').style.display = 'none';
+  homeworkOpen = false;
+}
+
+function submitHomework() {
+  const text = document.getElementById('hw-textarea').value.trim();
+  if (text) {
+    showEvent('✏️ 作业写好了！真棒！');
+  }
+  closeHomework();
+}
+
+// ============ DIALOG ============
+
+let dialogTimeout;
+function showDialog(text, px, py) {
+  const bubble = document.getElementById('dialog-bubble');
+  bubble.textContent = text;
+  bubble.style.left = (px - 50) + 'px';
+  bubble.style.top = (py - 80) + 'px';
+  bubble.style.display = 'block';
+  clearTimeout(dialogTimeout);
+  dialogTimeout = setTimeout(hideDialog, 3000);
+}
+
+function hideDialog() {
+  document.getElementById('dialog-bubble').style.display = 'none';
+}
+
+// ============ DAY/NIGHT OVERLAY (HOME) ============
+
+function drawDayNightOverlay() {
+  const h = gameTime.hour + gameTime.minute / 60;
+  let alpha = 0;
+  if (h < 6) alpha = 0.4;
+  else if (h < 7) alpha = 0.4 * (7 - h);
+  else if (h >= 19 && h < 20) alpha = 0.4 * (h - 19);
+  else if (h >= 20) alpha = 0.4;
+
+  if (alpha > 0) {
+    ctx.fillStyle = `rgba(10, 15, 40, ${alpha})`;
+    ctx.fillRect(0, 0, W, H);
+
+    if (h >= 18 || h < 6) {
+      ctx.fillStyle = 'rgba(255, 230, 150, 0.15)';
+      ctx.beginPath();
+      ctx.arc(260, 200, 180, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(700, 250, 150, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+}
+
+// ============ ROOM LABELS ============
+
+function drawRoomLabels() {
+  ctx.font = '14px Microsoft YaHei';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(139, 94, 60, 0.7)';
+  ctx.fillText('🛋️ 客厅', 270, 95);
+  ctx.fillText('🛏️ 卧室/书房', 740, 95);
+}
+
+// ============ CHARACTER NAME TAGS ============
+
+function drawNameTags() {
+  ctx.font = '11px Microsoft YaHei';
+  ctx.textAlign = 'center';
+  characters.forEach(ch => {
+    if (ch.x < 0) return;
+    if (currentScene === 'school' && (ch.id === 'me' || ch.id === 'brother')) return;
+    if (schoolAnimation.active && (ch.id === 'me' || ch.id === 'brother' || ch.id === 'grandma')) return;
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.beginPath();
+    ctx.roundRect(ch.x - 18, ch.y - 50, 36, 16, 4);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.fillText(ch.name, ch.x, ch.y - 38);
+  });
+}
+
+// ============ DECORATIONS ============
+
+function drawDecorations() {
+  // Clock
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(430, 120, 20, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(430, 120, 20, 0, Math.PI * 2);
+  ctx.stroke();
+  const hourAngle = (gameTime.hour % 12) / 12 * Math.PI * 2 - Math.PI / 2;
+  const minAngle = gameTime.minute / 60 * Math.PI * 2 - Math.PI / 2;
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(430, 120);
+  ctx.lineTo(430 + Math.cos(hourAngle) * 10, 120 + Math.sin(hourAngle) * 10);
+  ctx.stroke();
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(430, 120);
+  ctx.lineTo(430 + Math.cos(minAngle) * 14, 120 + Math.sin(minAngle) * 14);
+  ctx.stroke();
+
+  // Picture frame
+  ctx.strokeStyle = '#8b6914';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(80, 110, 60, 45);
+  ctx.fillStyle = '#e8f5e9';
+  ctx.fillRect(83, 113, 54, 39);
+  ctx.fillStyle = '#81c784';
+  ctx.beginPath();
+  ctx.moveTo(83, 145);
+  ctx.lineTo(100, 125);
+  ctx.lineTo(120, 140);
+  ctx.lineTo(137, 120);
+  ctx.lineTo(137, 152);
+  ctx.lineTo(83, 152);
+  ctx.fill();
+  ctx.fillStyle = '#ffeb3b';
+  ctx.beginPath();
+  ctx.arc(125, 120, 6, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Potted plant
+  ctx.fillStyle = '#8d6e63';
+  ctx.beginPath();
+  ctx.roundRect(870, 480, 30, 35, 5);
+  ctx.fill();
+  ctx.fillStyle = '#4caf50';
+  ctx.beginPath();
+  ctx.arc(885, 470, 20, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#66bb6a';
+  ctx.beginPath();
+  ctx.arc(878, 460, 12, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(892, 455, 10, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Rug
+  ctx.fillStyle = 'rgba(183, 110, 121, 0.4)';
+  ctx.beginPath();
+  ctx.ellipse(270, 420, 100, 50, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(183, 110, 121, 0.6)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.ellipse(270, 420, 100, 50, 0, 0, Math.PI * 2);
+  ctx.stroke();
+}
+
+// ============ BACKPACK ANIMATION INDICATOR ============
+
+function drawBackpackIndicator() {
+  if (backpackShowTimer > 0) {
+    // 在"我"的头上显示书包图标和提示
+    const me = characters[4];
+    if (me.x > 0) {
+      ctx.save();
+      ctx.font = 'bold 14px Microsoft YaHei';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#fff';
+      ctx.strokeStyle = '#1976d2';
+      ctx.lineWidth = 3;
+      const text = '🎒 背上书包！';
+      ctx.strokeText(text, me.x, me.y - 60);
+      ctx.fillText(text, me.x, me.y - 60);
+      ctx.restore();
+    }
+  }
+}
+
+// ============ MAIN GAME LOOP ============
+
+function gameLoop(timestamp) {
+  const dt = lastTimestamp ? timestamp - lastTimestamp : 16;
+  lastTimestamp = timestamp;
+
+  // Update
+  updateTime(dt);
+  if (!introActive) {
+    updateCharacterBehaviors();
+    updateSchoolSystem();
+  }
+  updateEvent(dt);
+
+  // Draw
+  ctx.clearRect(0, 0, W, H);
+
+  if (currentScene === 'home') {
+    drawBackground();
+    drawDecorations();
+    drawRoomLabels();
+    drawFurniture();
+
+    const sortedChars = [...characters].sort((a, b) => a.y - b.y);
+    sortedChars.forEach(drawCharacter);
+
+    drawSchoolAnimation();
+    drawBackpackIndicator();
+    drawDayNightOverlay();
+    drawNameTags();
+  } else if (currentScene === 'school') {
+    drawSchoolScene();
+  }
+
+  requestAnimationFrame(gameLoop);
+}
+
+// Start
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>

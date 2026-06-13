@@ -5,6 +5,8 @@ body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-
 #top-bar { height: 50px; background-color: #34495e; display: flex; align-items: center; justify-content: space-around; border-bottom: 2px solid #2c3e50; z-index: 10; position: relative; }
 .stat-box { display: flex; align-items: center; font-size: 1.2rem; font-weight: bold; }
 .stat-box .icon { margin-right: 8px; }
+#btn-music { background: #2980b9; color: #fff; border: none; border-radius: 5px; padding: 6px 12px; cursor: pointer; font-size: 0.9rem; font-weight: bold; transition: background 0.2s; }
+#btn-music:hover { background: #3498db; }
 
 /* Main Area - Canvas takes full remaining space */
 #main-area { display: block; flex: 1; position: relative; overflow: hidden; }
