@@ -1,68 +1,1446 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>滚铁球 - Rolling Ball</title>
-  <link rel="stylesheet" href="css/style.css" />
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+<meta http-equiv="Pragma" content="no-cache"/>
+<meta http-equiv="Expires" content="0"/>
+<title>小行星撞击</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #000;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", sans-serif;
+}
+canvas { display: block; }
+#ui {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  color: #fff;
+  font-size: 14px;
+  pointer-events: none;
+  z-index: 10;
+}
+#ui p { margin: 4px 0; text-shadow: 0 0 6px rgba(0,200,255,0.6); }
+#shield-bar {
+  display: inline-block;
+  width: 120px;
+  height: 10px;
+  background: rgba(0,0,0,0.5);
+  border: 1px solid rgba(0,200,255,0.5);
+  border-radius: 5px;
+  vertical-align: middle;
+  margin-left: 6px;
+  overflow: hidden;
+}
+#shield-bar-inner {
+  height: 100%;
+  background: linear-gradient(90deg, #0ff, #0af);
+  transition: width 0.2s;
+  border-radius: 5px;
+}
+#instructions {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: rgba(255,255,255,0.75);
+  font-size: 13px;
+  text-align: center;
+  pointer-events: none;
+  z-index: 10;
+  text-shadow: 0 0 4px rgba(0,150,255,0.4);
+}
+#unlock-msg {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0,0,0,0.85);
+  border: 2px solid #0ff;
+  border-radius: 12px;
+  padding: 24px 40px;
+  color: #0ff;
+  font-size: 20px;
+  text-align: center;
+  z-index: 100;
+  display: none;
+  box-shadow: 0 0 30px rgba(0,255,255,0.3);
+}
+#unlock-msg .sub { font-size: 14px; color: #aaa; margin-top: 8px; }
+#center-msg {
+  position: fixed;
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0,0,0,0.75);
+  border: 1px solid rgba(255,100,100,0.6);
+  border-radius: 10px;
+  padding: 14px 28px;
+  color: #ff8;
+  font-size: 16px;
+  text-align: center;
+  z-index: 90;
+  display: none;
+  box-shadow: 0 0 20px rgba(255,100,100,0.2);
+}
+#music-toggle {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 20;
+  background: rgba(0,0,0,0.6);
+  border: 1px solid rgba(0,255,255,0.4);
+  border-radius: 8px;
+  color: #0ff;
+  font-size: 18px;
+  width: 40px;
+  height: 40px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+#music-toggle:hover {
+  background: rgba(0,255,255,0.15);
+  border-color: #0ff;
+  box-shadow: 0 0 12px rgba(0,255,255,0.3);
+}
+#music-toggle.muted { color: #666; border-color: rgba(100,100,100,0.4); }
+</style>
 </head>
 <body>
-  <canvas id="game-canvas"></canvas>
+<canvas id="canvas"></canvas>
+<div id="ui">
+  <p id="planet-name"></p>
+  <p id="hits-info"></p>
+  <p id="destroyed-info"></p>
+  <p id="shield-info">护盾: <span id="shield-bar"><span id="shield-bar-inner" style="width:100%"></span></span> <span id="shield-val">100</span></p>
+</div>
+<div id="instructions">按 <strong>A</strong> 键发射小行星 | <strong>←→</strong> 或 <strong>Q/D</strong> 键移动视角搜索行星 | 摧毁行星后升级 | 自动射击 | 注意行星反击！</div>
+<button id="music-toggle" title="音乐开关">🔇</button>
+<div id="unlock-msg">
+  <div id="unlock-text"></div>
+  <div class="sub">继续按 A 键攻击新行星</div>
+</div>
+<div id="center-msg" id="center-msg-text"></div>
+<script>
+(function() {
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  let W, H;
 
-  <!-- HUD -->
-  <div id="hud">
-    <div class="hud-left">
-      <span id="hud-level">关卡 1</span>
-      <span id="hud-layer" style="display:none;color:#ff8844;font-size:14px;"></span>
-    </div>
-    <div class="hud-right">
-      <span id="hud-size">铁球等级: 1</span>
-    </div>
-  </div>
+  // === Audio System ===
+  let audioCtx = null;
+  let musicPlaying = false;
+  let musicMuted = false;
+  let musicGain = null;
+  let musicStarted = false;
 
-  <!-- Speed bar -->
-  <div id="speed-bar-wrap">
-    <div id="speed-bar"></div>
-  </div>
+  function initAudio() {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    musicGain = audioCtx.createGain();
+    musicGain.gain.value = 0.35;
+    musicGain.connect(audioCtx.destination);
+  }
 
-  <!-- Start Screen -->
-  <div id="start-screen" class="screen-overlay">
-    <h1>滚 铁 球</h1>
-    <p>在双轨铁道上滚动铁球，穿越隧道，躲避障碍</p>
-    <p style="font-size:13px;color:#777;">G 加速 &nbsp;|&nbsp; F 减速 &nbsp;|&nbsp; ← → 或 A D 方向</p>
-    <p style="font-size:12px;color:#666;">不按 G 铁球不会动 · 掉落时有概率落到下层轨道</p>
-    <button id="btn-start" class="btn">开始游戏</button>
-  </div>
+  function startBackgroundMusic() {
+    if (musicPlaying) return;
+    if (!audioCtx) initAudio();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    musicPlaying = true;
+    musicStarted = true;
+    document.getElementById('music-toggle').textContent = '🔊';
+    playDrone();
+    playArpeggio();
+    playPad();
+  }
 
-  <!-- Death Screen -->
-  <div id="death-screen" class="screen-overlay hidden">
-    <h2>铁球坠落！</h2>
-    <p>撞到障碍物或滚出轨道</p>
-    <button id="btn-retry" class="btn">重新挑战</button>
-  </div>
+  function playDrone() {
+    if (!musicPlaying || musicMuted) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    const filter = audioCtx.createBiquadFilter();
+    osc.type = 'sawtooth';
+    osc.frequency.value = 55;
+    filter.type = 'lowpass';
+    filter.frequency.value = 200;
+    filter.Q.value = 2;
+    gain.gain.setValueAtTime(0, audioCtx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.15, audioCtx.currentTime + 2);
+    gain.gain.linearRampToValueAtTime(0.1, audioCtx.currentTime + 6);
+    gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 8);
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(musicGain);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 8);
+    setTimeout(() => { if (musicPlaying && !musicMuted) playDrone(); }, 7500);
+  }
 
-  <!-- Merge Screen -->
-  <div id="merge-screen" class="screen-overlay hidden">
-    <h2>通关！</h2>
-    <div class="merge-anim">
-      <div class="merge-ball b1"></div>
-      <div class="merge-ball b2"></div>
-      <div class="merge-ball big"></div>
-    </div>
-    <p class="merge-info">铁球融合中...</p>
-  </div>
+  function playArpeggio() {
+    if (!musicPlaying || musicMuted) return;
+    const notes = [110, 146.83, 164.81, 220, 261.63, 329.63, 220, 164.81];
+    const noteLen = 0.5;
+    notes.forEach((freq, i) => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      const filter = audioCtx.createBiquadFilter();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      filter.type = 'lowpass';
+      filter.frequency.value = 800;
+      const t = audioCtx.currentTime + i * noteLen;
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.06, t + 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + noteLen * 0.9);
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(musicGain);
+      osc.start(t);
+      osc.stop(t + noteLen);
+    });
+    setTimeout(() => { if (musicPlaying && !musicMuted) playArpeggio(); }, notes.length * noteLen * 1000);
+  }
 
-  <!-- Win Screen -->
-  <div id="win-screen" class="screen-overlay hidden">
-    <h1>全部通关！</h1>
-    <p>你已征服所有轨道，铁球已达最大等级</p>
-    <button id="btn-restart" class="btn">再来一次</button>
-  </div>
+  function playPad() {
+    if (!musicPlaying || musicMuted) return;
+    const chords = [[130.81, 164.81, 196], [110, 146.83, 174.61], [116.54, 146.83, 185]];
+    const chord = chords[Math.floor(Math.random() * chords.length)];
+    chord.forEach(freq => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.value = freq;
+      osc.detune.value = (Math.random() - 0.5) * 10;
+      gain.gain.setValueAtTime(0, audioCtx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.04, audioCtx.currentTime + 1.5);
+      gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 5);
+      osc.connect(gain);
+      gain.connect(musicGain);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 5);
+    });
+    setTimeout(() => { if (musicPlaying && !musicMuted) playPad(); }, 4500 + Math.random() * 1500);
+  }
 
-  <script src="js/track.js"></script>
-  <script src="js/ball.js"></script>
-  <script src="js/renderer.js"></script>
-  <script src="js/ui.js"></script>
-  <script src="js/main.js"></script>
+  function playImpactSound() {
+    if (!audioCtx) initAudio();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + 0.3);
+    gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.3);
+    const bufferSize = audioCtx.sampleRate * 0.15;
+    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+    }
+    const noise = audioCtx.createBufferSource();
+    const noiseGain = audioCtx.createGain();
+    const noiseFilter = audioCtx.createBiquadFilter();
+    noise.buffer = buffer;
+    noiseFilter.type = 'bandpass';
+    noiseFilter.frequency.value = 400;
+    noiseGain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+    noise.connect(noiseFilter);
+    noiseFilter.connect(noiseGain);
+    noiseGain.connect(audioCtx.destination);
+    noise.start();
+  }
+
+  function toggleMusic() {
+    const btn = document.getElementById('music-toggle');
+    if (!musicStarted) {
+      startBackgroundMusic();
+      return;
+    }
+    musicMuted = !musicMuted;
+    if (musicMuted) {
+      musicGain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.3);
+      btn.textContent = '🔇';
+      btn.classList.add('muted');
+    } else {
+      musicGain.gain.linearRampToValueAtTime(0.35, audioCtx.currentTime + 0.3);
+      btn.textContent = '🔊';
+      btn.classList.remove('muted');
+      playDrone();
+      playArpeggio();
+      playPad();
+    }
+  }
+
+  document.getElementById('music-toggle').addEventListener('click', toggleMusic);
+  // === End Audio System ===
+
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  // --- Stars background ---
+  const stars = [];
+  for (let i = 0; i < 400; i++) {
+    stars.push({
+      x: Math.random() * 5000,
+      y: Math.random() * 2000 - 500,
+      r: Math.random() * 1.5 + 0.3,
+      a: Math.random(),
+      speed: Math.random() * 0.3 + 0.05
+    });
+  }
+
+  function drawStars() {
+    stars.forEach(s => {
+      s.a += s.speed * 0.02;
+      const alpha = 0.3 + 0.7 * Math.abs(Math.sin(s.a));
+      const sx = s.x - cameraX;
+      const sy = s.y;
+      if (sx < -20 || sx > W + 20 || sy < -20 || sy > H + 20) return;
+      ctx.beginPath();
+      ctx.arc(sx, sy, s.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+      ctx.fill();
+    });
+  }
+
+  // --- Planet definitions ---
+  const planetDefs = [
+    { name: '地球', radius: 70, maxHp: 100, colors: ['#1a6dd4', '#2ecc71', '#1abc9c'], type: 'earth' },
+    { name: '火星', radius: 55, maxHp: 150, colors: ['#e74c3c', '#c0392b', '#d35400'], type: 'mars' },
+    { name: '木星', radius: 100, maxHp: 250, colors: ['#f39c12', '#e67e22', '#d68910', '#b7950b'], type: 'jupiter' },
+    { name: '冰行星', radius: 60, maxHp: 120, colors: ['#74b9ff', '#0984e3', '#a8e6cf', '#dfe6e9'], type: 'ice' },
+    { name: '暗影星', radius: 65, maxHp: 180, colors: ['#6c5ce7', '#a29bfe', '#2d3436', '#636e72'], type: 'shadow' },
+    { name: '熔岩星', radius: 75, maxHp: 200, colors: ['#ff4757', '#ff6348', '#ffa502', '#2f3542'], type: 'lava' },
+    { name: '水晶星', radius: 50, maxHp: 90, colors: ['#00cec9', '#81ecec', '#55efc4', '#00b894'], type: 'crystal' },
+    { name: '巨行星', radius: 120, maxHp: 350, colors: ['#fdcb6e', '#e17055', '#d63031', '#fab1a0'], type: 'giant' }
+  ];
+
+  // === Camera / Scrolling System ===
+  let cameraX = 0;
+  const WORLD_WIDTH = 4000; // Total horizontal world space
+  const CAMERA_SPEED = 8;
+  let keysDown = {};
+
+  // === Planet placement in world space ===
+  let planets = []; // All planets in world
+  let destroyedPlanets = []; // Track destroyed planet indices
+  let asteroids = [];
+  let particles = [];
+  let totalHits = 0;
+  let destroyedCount = 0;
+  let unlockTimer = 0;
+  let autoBullets = [];
+
+  // === Shield System ===
+  let shield = 100;
+  let shieldMax = 100;
+  let shieldCooldown = 0; // Frames of disabled firing when shield is 0
+  let shieldRecoveryTimer = 0;
+
+  // === Counter-attack bullets from planets ===
+  let enemyBullets = [];
+
+  // === Galaxy formation ===
+  let galaxy = null; // formed galaxy object
+  let galaxyForming = false;
+  let galaxyFormTimer = 0;
+
+  // === Center message system ===
+  let centerMsgTimer = 0;
+
+  function showCenterMessage(text, duration) {
+    const el = document.getElementById('center-msg');
+    el.textContent = text;
+    el.style.display = 'block';
+    centerMsgTimer = duration || 150;
+  }
+
+  function updateCenterMessage() {
+    if (centerMsgTimer > 0) {
+      centerMsgTimer--;
+      if (centerMsgTimer <= 0) {
+        document.getElementById('center-msg').style.display = 'none';
+      }
+    }
+  }
+
+  // Initialize all planets spread across the world
+  function initAllPlanets() {
+    planets = [];
+    const spacing = WORLD_WIDTH / (planetDefs.length + 1);
+    for (let i = 0; i < planetDefs.length; i++) {
+      const def = planetDefs[i];
+      planets.push({
+        worldX: spacing * (i + 1), // Position in world
+        baseY: H * 0.3 + Math.random() * H * 0.4,
+        radius: def.radius,
+        hp: def.maxHp,
+        maxHp: def.maxHp,
+        colors: def.colors,
+        name: def.name,
+        type: def.type,
+        shake: 0,
+        angle: 0,
+        destroyed: false,
+        // Movement (AI)
+        movePhase: Math.random() * Math.PI * 2,
+        moveSpeed: 0.008 + Math.random() * 0.006,
+        moveAmplitude: 30 + Math.random() * 40,
+        // Counter-attack
+        fireTimer: Math.floor(120 + Math.random() * 120),
+        fireInterval: 120 + Math.floor(Math.random() * 60),
+        // Debris (after destruction)
+        debris: [],
+        debrisGenerated: false,
+        // Shield pulse
+        shieldPulse: 0
+      });
+    }
+    destroyedPlanets = [];
+  }
+
+  initAllPlanets();
+
+  // Get planet screen position
+  function getPlanetScreenPos(p) {
+    return {
+      x: p.worldX - cameraX,
+      y: p.baseY + Math.sin(p.movePhase) * p.moveAmplitude
+    };
+  }
+
+  // Find current target planet (closest alive planet in view)
+  function findTargetPlanet() {
+    let best = null;
+    let bestDist = Infinity;
+    const srcX = W * 0.12 + cameraX; // Source in world coords
+    for (let i = 0; i < planets.length; i++) {
+      const p = planets[i];
+      if (p.destroyed) continue;
+      const screenX = p.worldX - cameraX;
+      // Must be visible on screen (right side)
+      if (screenX > W * 0.25 && screenX < W + p.radius) {
+        const dist = Math.abs(p.worldX - srcX);
+        if (dist < bestDist) {
+          bestDist = dist;
+          best = p;
+        }
+      }
+    }
+    return best;
+  }
+
+  // Upgrade system
+  function getAsteroidLevel() {
+    return Math.min(destroyedCount, 10);
+  }
+  function getSourceRadius() {
+    return 35 + getAsteroidLevel() * 8;
+  }
+  function getAutoFireRate() {
+    const level = getAsteroidLevel();
+    if (level < 1) return 0;
+    return Math.max(10, 60 - level * 5);
+  }
+  function getBulletDamage() {
+    return 3 + getAsteroidLevel() * 2;
+  }
+  let autoFireCooldown = 0;
+
+  // --- Asteroid spawn ---
+  function spawnAsteroid() {
+    const target = findTargetPlanet();
+    if (!target) return;
+    const pos = getPlanetScreenPos(target);
+    const size = 8 + Math.random() * 18;
+    const startX = W * 0.12;
+    const startY = H * 0.5;
+    const targetX = pos.x + (Math.random() - 0.5) * target.radius * 0.6;
+    const targetY = pos.y + (Math.random() - 0.5) * target.radius * 0.6;
+    const dx = targetX - startX;
+    const dy = targetY - startY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const speed = 4 + Math.random() * 3;
+    asteroids.push({
+      x: startX,
+      y: startY,
+      size: size,
+      vx: (dx / dist) * speed,
+      vy: (dy / dist) * speed,
+      rotation: Math.random() * Math.PI * 2,
+      rotSpeed: (Math.random() - 0.5) * 0.15,
+      trail: [],
+      damage: Math.ceil(size * 0.5)
+    });
+  }
+
+  // --- Particles ---
+  function createExplosion(x, y, count, color) {
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 1 + Math.random() * 5;
+      particles.push({
+        x: x,
+        y: y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 1,
+        decay: 0.015 + Math.random() * 0.025,
+        size: 1 + Math.random() * 3,
+        color: color || `hsl(${Math.random() * 60 + 10}, 100%, 60%)`
+      });
+    }
+  }
+
+  // --- Generate debris for destroyed planet ---
+  function generateDebris(planet) {
+    const debris = [];
+    const count = 6 + Math.floor(Math.random() * 5);
+    for (let i = 0; i < count; i++) {
+      const angle = (i / count) * Math.PI * 2 + Math.random() * 0.5;
+      const dist = planet.radius * (0.3 + Math.random() * 0.8);
+      debris.push({
+        offsetX: Math.cos(angle) * dist,
+        offsetY: Math.sin(angle) * dist,
+        size: 5 + Math.random() * 15,
+        rotation: Math.random() * Math.PI * 2,
+        rotSpeed: (Math.random() - 0.5) * 0.02,
+        driftX: (Math.random() - 0.5) * 0.3,
+        driftY: (Math.random() - 0.5) * 0.3
+      });
+    }
+    planet.debris = debris;
+    planet.debrisGenerated = true;
+  }
+
+  // --- Drawing ---
+  function drawPlanetBody(p, px, py) {
+    const shakeX = (Math.random() - 0.5) * p.shake * 2;
+    const shakeY = (Math.random() - 0.5) * p.shake * 2;
+    const drawX = px + shakeX;
+    const drawY = py + shakeY;
+    p.shake *= 0.9;
+    p.angle += 0.005;
+
+    // Energy shield pulse (AI defense visual)
+    p.shieldPulse += 0.03;
+    const pulseAlpha = 0.1 + 0.08 * Math.sin(p.shieldPulse);
+    ctx.beginPath();
+    ctx.arc(drawX, drawY, p.radius + 12 + Math.sin(p.shieldPulse) * 3, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(100,200,255,${pulseAlpha})`;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.save();
+    ctx.translate(drawX, drawY);
+
+    // Planet body
+    const grad = ctx.createRadialGradient(-p.radius * 0.3, -p.radius * 0.3, p.radius * 0.1, 0, 0, p.radius);
+    grad.addColorStop(0, p.colors[0]);
+    grad.addColorStop(0.5, p.colors[1]);
+    grad.addColorStop(1, p.colors[2] || p.colors[0]);
+    ctx.beginPath();
+    ctx.arc(0, 0, p.radius, 0, Math.PI * 2);
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // Surface details
+    if (p.type === 'earth') {
+      ctx.globalAlpha = 0.3;
+      for (let i = 0; i < 5; i++) {
+        const a = p.angle + i * 1.2;
+        const cx = Math.cos(a) * p.radius * 0.4;
+        const cy = Math.sin(a) * p.radius * 0.3;
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, p.radius * 0.25, p.radius * 0.15, a, 0, Math.PI * 2);
+        ctx.fillStyle = '#27ae60';
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    } else if (p.type === 'jupiter') {
+      ctx.globalAlpha = 0.25;
+      for (let i = -3; i <= 3; i++) {
+        ctx.beginPath();
+        ctx.ellipse(0, i * p.radius * 0.2, p.radius * 0.9, p.radius * 0.06, 0, 0, Math.PI * 2);
+        ctx.fillStyle = p.colors[(i + 3) % p.colors.length];
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    } else if (p.type === 'lava') {
+      ctx.globalAlpha = 0.5;
+      for (let i = 0; i < 8; i++) {
+        const a = p.angle * 0.5 + i * 0.8;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(a) * 10, Math.sin(a) * 10);
+        ctx.lineTo(Math.cos(a + 0.3) * p.radius * 0.8, Math.sin(a + 0.3) * p.radius * 0.7);
+        ctx.strokeStyle = '#ff6348';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // Atmosphere glow
+    ctx.beginPath();
+    ctx.arc(0, 0, p.radius + 5, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(${p.type === 'ice' ? '100,200,255' : p.type === 'lava' ? '255,100,50' : '100,180,255'}, 0.2)`;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    // Damage cracks
+    const dmgRatio = 1 - p.hp / p.maxHp;
+    if (dmgRatio > 0.1) {
+      ctx.globalAlpha = dmgRatio * 0.8;
+      const crackCount = Math.floor(dmgRatio * 12);
+      for (let i = 0; i < crackCount; i++) {
+        const a = i * (Math.PI * 2 / crackCount) + p.angle * 0.2;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        const len = p.radius * (0.3 + dmgRatio * 0.6);
+        ctx.lineTo(Math.cos(a) * len, Math.sin(a) * len);
+        ctx.lineTo(Math.cos(a + 0.2) * len * 0.7, Math.sin(a + 0.2) * len * 0.8);
+        ctx.strokeStyle = '#ff4444';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    ctx.restore();
+
+    // HP bar
+    const barW = p.radius * 2.2;
+    const barH = 8;
+    const barX = drawX - barW / 2;
+    const barY = drawY - p.radius - 24;
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(barX - 1, barY - 1, barW + 2, barH + 2);
+    const hpRatio = Math.max(0, p.hp / p.maxHp);
+    const hpColor = hpRatio > 0.5 ? '#2ecc71' : hpRatio > 0.25 ? '#f39c12' : '#e74c3c';
+    ctx.fillStyle = hpColor;
+    ctx.fillRect(barX, barY, barW * hpRatio, barH);
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.strokeRect(barX - 1, barY - 1, barW + 2, barH + 2);
+
+    // Planet name
+    ctx.fillStyle = '#fff';
+    ctx.font = '12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(`${p.name} (${Math.max(0, Math.ceil(p.hp))}/${p.maxHp})`, drawX, barY - 6);
+    ctx.textAlign = 'left';
+  }
+
+  function drawDebris(planet) {
+    const pos = getPlanetScreenPos(planet);
+    const px = pos.x;
+    const py = pos.y;
+    if (px < -200 || px > W + 200) return;
+
+    planet.debris.forEach(d => {
+      d.offsetX += d.driftX;
+      d.offsetY += d.driftY;
+      d.rotation += d.rotSpeed;
+
+      const dx = px + d.offsetX;
+      const dy = py + d.offsetY;
+
+      ctx.save();
+      ctx.translate(dx, dy);
+      ctx.rotate(d.rotation);
+      ctx.globalAlpha = 0.4;
+
+      // Draw a grey debris chunk
+      ctx.beginPath();
+      const pts = 5;
+      for (let i = 0; i < pts; i++) {
+        const ang = (i / pts) * Math.PI * 2;
+        const r = d.size * (0.6 + Math.sin(i * 2.3) * 0.4);
+        if (i === 0) ctx.moveTo(Math.cos(ang) * r, Math.sin(ang) * r);
+        else ctx.lineTo(Math.cos(ang) * r, Math.sin(ang) * r);
+      }
+      ctx.closePath();
+      ctx.fillStyle = '#555';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(150,150,150,0.5)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      ctx.globalAlpha = 1;
+      ctx.restore();
+    });
+
+    // "Destroyed" label
+    ctx.fillStyle = 'rgba(150,150,150,0.6)';
+    ctx.font = '11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(`${planet.name} [残骸]`, px, py + planet.radius + 20);
+    ctx.textAlign = 'left';
+  }
+
+  // Draw galaxy (formed from merged debris)
+  function drawGalaxy() {
+    if (!galaxy) return;
+    const gx = galaxy.worldX - cameraX;
+    const gy = galaxy.y;
+    if (gx < -200 || gx > W + 200) return;
+
+    galaxy.angle += 0.003;
+    galaxy.pulsePhase += 0.02;
+    const pulse = 1 + 0.05 * Math.sin(galaxy.pulsePhase);
+
+    // Outer glow
+    const glowR = galaxy.radius * 2 * pulse;
+    const glowGrad = ctx.createRadialGradient(gx, gy, 0, gx, gy, glowR);
+    glowGrad.addColorStop(0, 'rgba(180,100,255,0.2)');
+    glowGrad.addColorStop(0.5, 'rgba(100,50,200,0.1)');
+    glowGrad.addColorStop(1, 'rgba(0,0,50,0)');
+    ctx.beginPath();
+    ctx.arc(gx, gy, glowR, 0, Math.PI * 2);
+    ctx.fillStyle = glowGrad;
+    ctx.fill();
+
+    // Core
+    const coreGrad = ctx.createRadialGradient(gx, gy, 0, gx, gy, galaxy.radius * pulse);
+    coreGrad.addColorStop(0, '#fff');
+    coreGrad.addColorStop(0.3, '#c8a2ff');
+    coreGrad.addColorStop(0.7, '#6a3ab2');
+    coreGrad.addColorStop(1, 'rgba(50,20,80,0.5)');
+    ctx.beginPath();
+    ctx.arc(gx, gy, galaxy.radius * pulse, 0, Math.PI * 2);
+    ctx.fillStyle = coreGrad;
+    ctx.fill();
+
+    // Ring
+    ctx.save();
+    ctx.translate(gx, gy);
+    ctx.rotate(galaxy.angle);
+    ctx.scale(1, 0.35);
+    ctx.beginPath();
+    ctx.arc(0, 0, galaxy.radius * 1.8, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(200,150,255,0.4)';
+    ctx.lineWidth = 4;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(0, 0, galaxy.radius * 2.2, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(150,100,255,0.2)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.restore();
+
+    // Satellites
+    for (let i = 0; i < 3; i++) {
+      const sa = galaxy.angle * 2 + i * (Math.PI * 2 / 3);
+      const sr = galaxy.radius * 1.5;
+      const sx = gx + Math.cos(sa) * sr;
+      const sy = gy + Math.sin(sa) * sr * 0.35;
+      ctx.beginPath();
+      ctx.arc(sx, sy, 4, 0, Math.PI * 2);
+      ctx.fillStyle = '#ddf';
+      ctx.fill();
+    }
+
+    // Label
+    ctx.fillStyle = 'rgba(200,150,255,0.8)';
+    ctx.font = '13px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('新星系', gx, gy + galaxy.radius * 1.8 + 20);
+    ctx.textAlign = 'left';
+  }
+
+  function drawAsteroid(a) {
+    ctx.beginPath();
+    for (let i = 0; i < a.trail.length; i++) {
+      const t = a.trail[i];
+      if (i === 0) ctx.moveTo(t.x, t.y);
+      else ctx.lineTo(t.x, t.y);
+    }
+    ctx.strokeStyle = `rgba(255, 160, 50, 0.4)`;
+    ctx.lineWidth = a.size * 0.4;
+    ctx.stroke();
+
+    if (a.trail.length > 1) {
+      const last = a.trail[a.trail.length - 1];
+      ctx.beginPath();
+      ctx.arc(last.x, last.y, a.size * 0.6, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255, 100, 0, 0.3)';
+      ctx.fill();
+    }
+
+    ctx.save();
+    ctx.translate(a.x, a.y);
+    ctx.rotate(a.rotation);
+    const grad = ctx.createRadialGradient(-a.size * 0.2, -a.size * 0.2, 0, 0, 0, a.size);
+    grad.addColorStop(0, '#bbb');
+    grad.addColorStop(0.5, '#777');
+    grad.addColorStop(1, '#333');
+    ctx.beginPath();
+    const points = 7;
+    for (let i = 0; i < points; i++) {
+      const ang = (i / points) * Math.PI * 2;
+      const r = a.size * (0.7 + Math.sin(i * 3.7) * 0.3);
+      if (i === 0) ctx.moveTo(Math.cos(ang) * r, Math.sin(ang) * r);
+      else ctx.lineTo(Math.cos(ang) * r, Math.sin(ang) * r);
+    }
+    ctx.closePath();
+    ctx.fillStyle = grad;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,200,100,0.4)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawParticles() {
+    particles.forEach(p => {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fillStyle = p.color.includes('hsl') ? p.color.replace(')', `,${p.life})`) 
+        : `rgba(255,200,50,${p.life})`;
+      ctx.globalAlpha = p.life;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    });
+  }
+
+  function drawAutoBullets() {
+    autoBullets.forEach(b => {
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, b.size, 0, Math.PI * 2);
+      ctx.fillStyle = b.color;
+      ctx.shadowColor = b.color;
+      ctx.shadowBlur = 8;
+      ctx.globalAlpha = b.life;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.shadowBlur = 0;
+      ctx.beginPath();
+      ctx.moveTo(b.x - b.vx * 2, b.y - b.vy * 2);
+      ctx.lineTo(b.x, b.y);
+      ctx.strokeStyle = b.color;
+      ctx.lineWidth = b.size * 0.6;
+      ctx.globalAlpha = b.life * 0.5;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    });
+  }
+
+  function drawEnemyBullets() {
+    enemyBullets.forEach(b => {
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, b.size, 0, Math.PI * 2);
+      const grad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.size);
+      grad.addColorStop(0, '#fff');
+      grad.addColorStop(0.4, '#f44');
+      grad.addColorStop(1, 'rgba(255,0,0,0.3)');
+      ctx.fillStyle = grad;
+      ctx.fill();
+      // Trail
+      ctx.beginPath();
+      ctx.moveTo(b.x - b.vx * 3, b.y - b.vy * 3);
+      ctx.lineTo(b.x, b.y);
+      ctx.strokeStyle = 'rgba(255,50,50,0.5)';
+      ctx.lineWidth = b.size * 0.5;
+      ctx.stroke();
+    });
+  }
+
+  // --- Source asteroid (player) ---
+  function drawSourceAsteroid() {
+    const sx = W * 0.12;
+    const sy = H * 0.5;
+    const sr = getSourceRadius();
+    const level = getAsteroidLevel();
+
+    // Shield disabled indicator
+    if (shieldCooldown > 0) {
+      ctx.beginPath();
+      ctx.arc(sx, sy, sr + 20, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(255,50,50,${0.3 + 0.3 * Math.sin(Date.now() * 0.01)})`;
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      // "DISABLED" text
+      ctx.fillStyle = '#f44';
+      ctx.font = 'bold 12px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('系统冷却中...', sx, sy - sr - 20);
+      ctx.textAlign = 'left';
+    }
+
+    // Player shield visual
+    if (shield > 0 && shieldCooldown <= 0) {
+      ctx.beginPath();
+      ctx.arc(sx, sy, sr + 8, 0, Math.PI * 2 * (shield / shieldMax));
+      ctx.strokeStyle = `rgba(0,255,255,${0.2 + 0.1 * Math.sin(Date.now() * 0.005)})`;
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    }
+
+    // Level glow
+    if (level > 0) {
+      ctx.beginPath();
+      ctx.arc(sx, sy, sr + 10 + level * 2, 0, Math.PI * 2);
+      const glowColor = level >= 7 ? 'rgba(255,50,50,0.15)' : level >= 4 ? 'rgba(255,150,50,0.12)' : 'rgba(255,200,100,0.1)';
+      ctx.fillStyle = glowColor;
+      ctx.fill();
+    }
+
+    // Source asteroid body
+    ctx.save();
+    ctx.translate(sx, sy);
+    const grad = ctx.createRadialGradient(-sr * 0.2, -sr * 0.2, 0, 0, 0, sr);
+    if (level >= 7) {
+      grad.addColorStop(0, '#ff6');
+      grad.addColorStop(0.4, '#e44');
+      grad.addColorStop(1, '#622');
+    } else if (level >= 4) {
+      grad.addColorStop(0, '#fc8');
+      grad.addColorStop(0.5, '#a64');
+      grad.addColorStop(1, '#432');
+    } else {
+      grad.addColorStop(0, '#999');
+      grad.addColorStop(0.6, '#555');
+      grad.addColorStop(1, '#222');
+    }
+    ctx.beginPath();
+    const pts = 9;
+    for (let i = 0; i < pts; i++) {
+      const ang = (i / pts) * Math.PI * 2 + 0.3;
+      const r = sr * (0.75 + Math.sin(i * 2.5 + 1) * 0.25);
+      if (i === 0) ctx.moveTo(Math.cos(ang) * r, Math.sin(ang) * r);
+      else ctx.lineTo(Math.cos(ang) * r, Math.sin(ang) * r);
+    }
+    ctx.closePath();
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // Craters
+    ctx.globalAlpha = 0.3;
+    for (let i = 0; i < 4 + level; i++) {
+      const ca = i * 1.2 + 0.5;
+      ctx.beginPath();
+      ctx.arc(Math.cos(ca) * sr * 0.4, Math.sin(ca) * sr * 0.4, sr * 0.12, 0, Math.PI * 2);
+      ctx.fillStyle = level >= 7 ? '#a00' : '#333';
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    // Level ring
+    if (level > 0) {
+      ctx.beginPath();
+      ctx.arc(0, 0, sr + 4, 0, Math.PI * 2 * (level / 10));
+      ctx.strokeStyle = level >= 7 ? '#ff4' : level >= 4 ? '#fa0' : '#8cf';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    }
+
+    ctx.restore();
+
+    // Label
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.font = '12px sans-serif';
+    ctx.textAlign = 'center';
+    if (level > 0) {
+      ctx.fillText(`小行星 Lv.${level}`, sx, sy + sr + 18);
+      ctx.fillStyle = level >= 7 ? '#f44' : level >= 4 ? '#fa0' : '#8cf';
+      ctx.font = '10px sans-serif';
+      ctx.fillText(`攻击力 +${getBulletDamage()} | 自动射击`, sx, sy + sr + 32);
+    } else {
+      ctx.fillText('小行星', sx, sy + sr + 18);
+    }
+    ctx.textAlign = 'left';
+  }
+
+  // --- Update ---
+  function update() {
+    // Camera movement
+    if (keysDown['ArrowLeft'] || keysDown['arrowleft']) {
+      cameraX = Math.max(0, cameraX - CAMERA_SPEED);
+    }
+    if (keysDown['ArrowRight'] || keysDown['arrowright']) {
+      cameraX = Math.min(WORLD_WIDTH - W, cameraX + CAMERA_SPEED);
+    }
+
+    // Update planet movement
+    planets.forEach(p => {
+      if (!p.destroyed) {
+        p.movePhase += p.moveSpeed;
+      }
+    });
+
+    // Shield recovery
+    if (shieldCooldown > 0) {
+      shieldCooldown--;
+      if (shieldCooldown <= 0) {
+        shield = 30; // Partial recovery after cooldown
+      }
+    } else if (shield < shieldMax) {
+      shieldRecoveryTimer++;
+      if (shieldRecoveryTimer >= 5) { // Slow passive recovery
+        shield = Math.min(shieldMax, shield + 0.3);
+        shieldRecoveryTimer = 0;
+      }
+    }
+
+    // Find target for auto-fire
+    const target = findTargetPlanet();
+
+    // Auto-fire bullets
+    const fireRate = getAutoFireRate();
+    if (fireRate > 0 && target && shieldCooldown <= 0) {
+      autoFireCooldown--;
+      if (autoFireCooldown <= 0) {
+        autoFireCooldown = fireRate;
+        const sx = W * 0.12;
+        const sy = H * 0.5;
+        const tpos = getPlanetScreenPos(target);
+        const dx = tpos.x - sx;
+        const dy = tpos.y - sy;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const speed = 6 + getAsteroidLevel() * 0.5;
+        const bulletCount = Math.min(3, 1 + Math.floor(getAsteroidLevel() / 3));
+        for (let b = 0; b < bulletCount; b++) {
+          const spread = (Math.random() - 0.5) * 0.15;
+          const angle = Math.atan2(dy, dx) + spread;
+          autoBullets.push({
+            x: sx + Math.cos(angle) * getSourceRadius(),
+            y: sy + Math.sin(angle) * getSourceRadius(),
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            size: 3 + getAsteroidLevel() * 0.5,
+            damage: getBulletDamage(),
+            life: 1,
+            color: getAsteroidLevel() >= 7 ? '#f44' : getAsteroidLevel() >= 4 ? '#fa0' : '#8cf'
+          });
+        }
+        createExplosion(sx + (dx / dist) * getSourceRadius(), sy + (dy / dist) * getSourceRadius(), 3, 
+          getAsteroidLevel() >= 7 ? '#f44' : '#fa0');
+      }
+    }
+
+    // Update auto bullets
+    for (let i = autoBullets.length - 1; i >= 0; i--) {
+      const b = autoBullets[i];
+      b.x += b.vx;
+      b.y += b.vy;
+      b.life -= 0.005;
+
+      // Check hit on all visible planets
+      let hit = false;
+      for (let pi = 0; pi < planets.length; pi++) {
+        const p = planets[pi];
+        const pos = getPlanetScreenPos(p);
+        const dx = b.x - pos.x;
+        const dy = b.y - pos.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist < p.radius + b.size) {
+          if (p.destroyed) {
+            // Hit debris - no damage, show message
+            createExplosion(b.x, b.y, 3, 'rgba(100,100,100,0.5)');
+            showCenterMessage('💀 该行星已被摧毁！前往其他区域搜索新行星 →', 90);
+          } else {
+            // Damage planet
+            p.hp -= b.damage;
+            p.shake = 3 + b.damage * 0.2;
+            createExplosion(b.x, b.y, 6, b.color);
+            playImpactSound();
+
+            if (p.hp <= 0) {
+              destroyPlanet(p, pos);
+            }
+          }
+          hit = true;
+          break;
+        }
+      }
+
+      if (hit) {
+        autoBullets.splice(i, 1);
+        continue;
+      }
+
+      if (b.life <= 0 || b.x > W + 100 || b.x < -100 || b.y > H + 100 || b.y < -100) {
+        autoBullets.splice(i, 1);
+      }
+    }
+
+    // Asteroids (manual fire)
+    for (let i = asteroids.length - 1; i >= 0; i--) {
+      const a = asteroids[i];
+      a.x += a.vx;
+      a.y += a.vy;
+      a.rotation += a.rotSpeed;
+      a.trail.push({ x: a.x, y: a.y });
+      if (a.trail.length > 12) a.trail.shift();
+
+      let hitAny = false;
+      for (let pi = 0; pi < planets.length; pi++) {
+        const p = planets[pi];
+        const pos = getPlanetScreenPos(p);
+        const dx = a.x - pos.x;
+        const dy = a.y - pos.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist < p.radius + a.size * 0.5) {
+          if (p.destroyed) {
+            createExplosion(a.x, a.y, 5, 'rgba(100,100,100,0.5)');
+            showCenterMessage('💀 该行星已被摧毁！前往其他区域搜索新行星 →', 90);
+          } else {
+            p.hp -= a.damage;
+            p.shake = 8 + a.damage * 0.5;
+            totalHits++;
+            createExplosion(a.x, a.y, 15 + a.size, `hsl(${Math.random() * 40 + 10}, 100%, 55%)`);
+            playImpactSound();
+
+            if (p.hp <= 0) {
+              destroyPlanet(p, pos);
+            }
+          }
+          hitAny = true;
+          break;
+        }
+      }
+
+      if (hitAny) {
+        asteroids.splice(i, 1);
+        continue;
+      }
+
+      if (a.x > W + 50 || a.x < -50 || a.y > H + 50 || a.y < -50) {
+        asteroids.splice(i, 1);
+      }
+    }
+
+    // AI Counter-attack: planets fire at player
+    const playerX = W * 0.12;
+    const playerY = H * 0.5;
+
+    planets.forEach(p => {
+      if (p.destroyed) return;
+      const pos = getPlanetScreenPos(p);
+      // Only fire if on screen
+      if (pos.x < -100 || pos.x > W + 100) return;
+
+      p.fireTimer--;
+      if (p.fireTimer <= 0) {
+        // Fire rate increases as HP drops (dying struggle)
+        const hpRatio = p.hp / p.maxHp;
+        const baseInterval = p.fireInterval;
+        const adjustedInterval = Math.max(30, baseInterval * hpRatio);
+        p.fireTimer = Math.floor(adjustedInterval);
+
+        // Fire counter-attack bullet toward player
+        const dx = playerX - pos.x;
+        const dy = playerY - pos.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const speed = 2.5 + (1 - hpRatio) * 2; // Faster when damaged
+        const spread = (Math.random() - 0.5) * 0.2;
+        const angle = Math.atan2(dy, dx) + spread;
+
+        enemyBullets.push({
+          x: pos.x + Math.cos(angle) * p.radius,
+          y: pos.y + Math.sin(angle) * p.radius,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          size: 5 + (1 - hpRatio) * 3,
+          damage: 8 + Math.floor((1 - hpRatio) * 12)
+        });
+      }
+    });
+
+    // Update enemy bullets
+    for (let i = enemyBullets.length - 1; i >= 0; i--) {
+      const b = enemyBullets[i];
+      b.x += b.vx;
+      b.y += b.vy;
+
+      // Hit player asteroid
+      const dx = b.x - playerX;
+      const dy = b.y - playerY;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < getSourceRadius() + b.size) {
+        // Hit player
+        if (shield > 0) {
+          shield = Math.max(0, shield - b.damage);
+          createExplosion(b.x, b.y, 8, 'rgba(0,200,255,0.8)');
+          if (shield <= 0) {
+            shieldCooldown = 180; // 3 seconds at 60fps
+            showCenterMessage('⚠️ 护盾已耗尽！系统冷却中...', 120);
+          }
+        } else {
+          createExplosion(b.x, b.y, 5, 'rgba(255,50,50,0.8)');
+        }
+        enemyBullets.splice(i, 1);
+        continue;
+      }
+
+      // Out of bounds
+      if (b.x < -50 || b.x > W + 50 || b.y < -50 || b.y > H + 50) {
+        enemyBullets.splice(i, 1);
+      }
+    }
+
+    // Particles
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vx *= 0.98;
+      p.vy *= 0.98;
+      p.life -= p.decay;
+      if (p.life <= 0) particles.splice(i, 1);
+    }
+
+    // Unlock timer
+    if (unlockTimer > 0) unlockTimer--;
+
+    // Galaxy formation check
+    checkGalaxyFormation();
+
+    // Debris drift toward merge point (if 3+ destroyed)
+    if (destroyedCount >= 3 && !galaxy) {
+      const centerX = WORLD_WIDTH / 2;
+      const centerY = H * 0.5;
+      planets.forEach(p => {
+        if (p.destroyed && p.debrisGenerated) {
+          p.debris.forEach(d => {
+            const targetX = centerX - p.worldX;
+            const targetY = centerY - p.baseY;
+            d.driftX += (targetX - d.offsetX) * 0.0001;
+            d.driftY += (targetY - d.offsetY) * 0.0001;
+          });
+        }
+      });
+    }
+
+    // Center message
+    updateCenterMessage();
+  }
+
+  function destroyPlanet(p, pos) {
+    createExplosion(pos.x, pos.y, 80, `hsl(${Math.random() * 360}, 80%, 50%)`);
+    createExplosion(pos.x, pos.y, 50, `hsl(${Math.random() * 360}, 90%, 60%)`);
+    p.destroyed = true;
+    p.hp = 0;
+    destroyedCount++;
+    destroyedPlanets.push(p);
+    generateDebris(p);
+
+    unlockTimer = 180;
+    showUnlockMessage(p);
+
+    // Check galaxy formation
+    if (destroyedCount === 5) {
+      setTimeout(() => {
+        formGalaxy();
+      }, 2000);
+    }
+  }
+
+  function checkGalaxyFormation() {
+    // Already handled in destroyPlanet
+  }
+
+  function formGalaxy() {
+    if (galaxy) return;
+    // Find average position of destroyed planets
+    let avgX = 0;
+    destroyedPlanets.forEach(p => { avgX += p.worldX; });
+    avgX /= destroyedPlanets.length;
+
+    galaxy = {
+      worldX: avgX,
+      y: H * 0.5,
+      radius: 50,
+      angle: 0,
+      pulsePhase: 0
+    };
+
+    // Clear debris from destroyed planets (they merged)
+    destroyedPlanets.forEach(p => {
+      p.debris = [];
+    });
+
+    showCenterMessage('🌌 残骸汇聚形成了新星系！', 200);
+  }
+
+  function showUnlockMessage(destroyedPlanet) {
+    // Find next alive planet
+    let nextName = '未知';
+    for (let i = 0; i < planets.length; i++) {
+      if (!planets[i].destroyed) {
+        nextName = planets[i].name;
+        break;
+      }
+    }
+    const msgEl = document.getElementById('unlock-msg');
+    document.getElementById('unlock-text').textContent = 
+      `🎉 ${destroyedPlanet.name} 已摧毁！探索搜索新目标：${nextName}`;
+    msgEl.style.display = 'block';
+    setTimeout(() => {
+      msgEl.style.display = 'none';
+    }, 2500);
+  }
+
+  // --- Render loop ---
+  function render() {
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, W, H);
+
+    // Deep space gradient
+    const bgGrad = ctx.createRadialGradient(W * 0.5, H * 0.5, 0, W * 0.5, H * 0.5, W * 0.7);
+    bgGrad.addColorStop(0, 'rgba(10, 15, 40, 1)');
+    bgGrad.addColorStop(0.5, 'rgba(5, 8, 25, 1)');
+    bgGrad.addColorStop(1, 'rgba(0, 0, 0, 1)');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, W, H);
+
+    drawStars();
+    drawSourceAsteroid();
+
+    // Draw all planets (alive or debris)
+    planets.forEach(p => {
+      const pos = getPlanetScreenPos(p);
+      if (pos.x < -200 || pos.x > W + 200) return; // Off-screen culling
+      if (p.destroyed) {
+        drawDebris(p);
+      } else {
+        drawPlanetBody(p, pos.x, pos.y);
+      }
+    });
+
+    // Draw galaxy
+    drawGalaxy();
+
+    asteroids.forEach(drawAsteroid);
+    drawAutoBullets();
+    drawEnemyBullets();
+    drawParticles();
+
+    // Draw minimap/position indicator at top
+    drawPositionIndicator();
+
+    // UI updates
+    const currentTarget = findTargetPlanet();
+    document.getElementById('planet-name').textContent = 
+      currentTarget ? `当前目标: ${currentTarget.name}` : '搜索中... ← → 移动视角';
+    document.getElementById('hits-info').textContent = `发射次数: ${totalHits}`;
+    document.getElementById('destroyed-info').textContent = 
+      `已摧毁行星: ${destroyedCount}/${planetDefs.length}` + (getAsteroidLevel() > 0 ? ` | 小行星 Lv.${getAsteroidLevel()}` : '');
+    
+    // Shield UI
+    document.getElementById('shield-bar-inner').style.width = `${(shield / shieldMax) * 100}%`;
+    document.getElementById('shield-val').textContent = Math.ceil(shield);
+    if (shieldCooldown > 0) {
+      document.getElementById('shield-bar-inner').style.background = 'linear-gradient(90deg, #f44, #a00)';
+    } else {
+      document.getElementById('shield-bar-inner').style.background = 'linear-gradient(90deg, #0ff, #0af)';
+    }
+
+    update();
+    requestAnimationFrame(render);
+  }
+
+  // Position indicator (minimap bar)
+  function drawPositionIndicator() {
+    const barW = 200;
+    const barH = 6;
+    const barX = (W - barW) / 2;
+    const barY = 10;
+
+    ctx.fillStyle = 'rgba(255,255,255,0.1)';
+    ctx.fillRect(barX, barY, barW, barH);
+
+    // Camera position
+    const camRatio = cameraX / (WORLD_WIDTH - W);
+    const indicatorW = (W / WORLD_WIDTH) * barW;
+    ctx.fillStyle = 'rgba(0,255,255,0.4)';
+    ctx.fillRect(barX + camRatio * (barW - indicatorW), barY, indicatorW, barH);
+
+    // Planet dots
+    planets.forEach(p => {
+      const px = barX + (p.worldX / WORLD_WIDTH) * barW;
+      ctx.beginPath();
+      ctx.arc(px, barY + barH / 2, 2, 0, Math.PI * 2);
+      ctx.fillStyle = p.destroyed ? 'rgba(100,100,100,0.5)' : '#0f0';
+      ctx.fill();
+    });
+
+    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+    ctx.strokeRect(barX, barY, barW, barH);
+  }
+
+  // --- Input ---
+  // Controls: A = fire, ←/→ or Q/E keys = scroll camera, D also scrolls right
+  window.addEventListener('keydown', (e) => {
+    keysDown[e.key] = true;
+    keysDown[e.key.toLowerCase()] = true;
+
+    // Q key for left scroll
+    if (e.key === 'q' || e.key === 'Q') {
+      keysDown['ArrowLeft'] = true;
+    }
+    // D or E key for right scroll
+    if (e.key === 'd' || e.key === 'D' || e.key === 'e' || e.key === 'E') {
+      keysDown['ArrowRight'] = true;
+    }
+
+    // A key fires asteroids
+    if ((e.key === 'a' || e.key === 'A') && !e.repeat) {
+      if (shieldCooldown > 0) return;
+      const tgt = findTargetPlanet();
+      if (!tgt) {
+        showCenterMessage('💀 视野内无目标！使用 ← → 键搜索新行星', 60);
+        return;
+      }
+      if (!musicStarted) {
+        startBackgroundMusic();
+      }
+      const count = 1 + Math.floor(Math.random() * 2);
+      for (let i = 0; i < count; i++) {
+        spawnAsteroid();
+      }
+      createExplosion(W * 0.12, H * 0.5, 5, 'rgba(255,200,100,0.8)');
+    }
+  });
+
+  window.addEventListener('keyup', (e) => {
+    delete keysDown[e.key];
+    delete keysDown[e.key.toLowerCase()];
+    if (e.key === 'q' || e.key === 'Q') {
+      delete keysDown['ArrowLeft'];
+    }
+    if (e.key === 'd' || e.key === 'D' || e.key === 'e' || e.key === 'E') {
+      delete keysDown['ArrowRight'];
+    }
+  });
+
+  // Handle resize
+  window.addEventListener('resize', () => {
+    planets.forEach(p => {
+      p.baseY = H * 0.3 + Math.random() * H * 0.4;
+    });
+    if (galaxy) galaxy.y = H * 0.5;
+  });
+
+  render();
+})();
+</script>
 </body>
 </html>
